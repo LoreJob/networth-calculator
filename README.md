@@ -83,7 +83,7 @@ disegnare la risposta. Le due API sono:
 | 9 | Trattamento integrativo | 1.200 &euro; fino a 15.000, phase-out lineare fino a 28.000 |
 | 10 | Netto annuo | imponibile fiscale - IRPEF netta - addizionali + trattamento integrativo |
 | 11 | Netto mensile | netto annuo / mensilita' (12, 13 o 14) |
-| 12 | TFR maturato | RAL / 13,5 &mdash; **fuori dal netto**, mostrato a parte |
+| 12 | TFR maturato | RAL / 13,5 , **fuori dal netto**, mostrato a parte |
 
 Le imposte a scaglioni sono applicate in modo **progressivo**: l'aliquota di uno scaglione colpisce
 solo la quota di reddito che ricade in quello scaglione, mai l'intero reddito.
@@ -94,7 +94,7 @@ Il dataset MEF distingue due modi in cui le regioni deliberano l'addizionale, e 
 entrambi perche' danno risultati diversi:
 
 - **aliquote per scaglioni** (15 tra regioni e province autonome): progressive come l'IRPEF. Il
-  numero di scaglioni cambia da regione a regione &mdash; Abruzzo, Liguria e Bolzano ne hanno tre,
+  numero di scaglioni cambia da regione a regione , Abruzzo, Liguria e Bolzano ne hanno tre,
   non quattro, quindi il parser non assume mai una struttura fissa.
 - **aliquota unica** (6: Valle d'Aosta, Veneto, Calabria, Sicilia, Sardegna, Basilicata): una sola
   aliquota applicata all'**intero** imponibile, non per scaglioni.
@@ -152,7 +152,7 @@ aliquota_comunale = "Addizionale comunale dovuta" / "Reddito imponibile addizion
   reddito **l'app sottostima il netto reale**.
 - **Doppia semplificazione sull'addizionale comunale.** Il dato e' fermo all'anno d'imposta 2024
   (il piu' recente pubblicato) ed e' un'aliquota media derivata per via indiretta, non letta da
-  delibera. Molti comuni &mdash; Milano compreso &mdash; hanno soglie di esenzione o scaglioni che
+  delibera. Molti comuni , Milano compreso , hanno soglie di esenzione o scaglioni che
   un'unica aliquota piatta non puo' riprodurre: sul dato 2024 Milano risulta allo 0,718% contro lo
   0,8% deliberato, proprio perche' la media incorpora i redditi esentati.
 - **Trattamento integrativo approssimato**: si usa il phase-out lineare sul reddito, senza la
@@ -171,8 +171,8 @@ aliquota_comunale = "Addizionale comunale dovuta" / "Reddito imponibile addizion
 ## Validazione
 
 I test in `tests/test_pipeline.py` (32 casi, `python -m pytest tests -q`) verificano sui cinque
-importi richiesti &mdash; 20.000, 25.000, 35.000, 50.000 e 70.000 &euro;, comune Milano, 13
-mensilita' &mdash; che:
+importi richiesti , 20.000, 25.000, 35.000, 50.000 e 70.000 &euro;, comune Milano, 13
+mensilita' , che:
 
 - il netto sia sempre positivo e sempre inferiore alla RAL;
 - il netto cresca al crescere della RAL, senza inversioni;
@@ -186,7 +186,7 @@ mensilita' &mdash; che:
 
 Piu' i singoli moduli confrontati con il calcolo manuale delle formule di legge.
 
-### Risultati &mdash; Milano, 13 mensilita'
+### Risultati , Milano, 13 mensilita'
 
 | RAL | INPS | IRPEF netta | Add. reg. | Add. com. | Tratt. integr. | **Netto annuo** | **Netto mensile** | TFR |
 |---|---|---|---|---|---|---|---|---|
