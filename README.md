@@ -193,18 +193,63 @@ Stessa RAL, comune diverso (35.000 &euro;, 13 mensilita'):
 
 ### Validazione manuale contro simulatori di terze parti
 
-**Da completare.** Il confronto va fatto a mano su due o tre degli importi qui sopra, usando un
-simulatore pubblico e annotando lo scostamento. Gli scostamenti attesi, in ordine di impatto:
+Quattro casi confrontati a mano con due simulatori pubblici,
+[calcolostipendionetto.it](https://www.calcolostipendionetto.it/) e
+[coverflex.com](https://www.coverflex.com/it/calcolo-stipendio-netto), sempre con le stesse
+impostazioni: dipendente a tempo indeterminato, nessun carico familiare.
 
-1. **Fascia 20.000&ndash;32.000 &euro;**: i simulatori aggiornati applicano il cuneo fiscale
-   strutturale 2026, qui non implementato. L'app dara' un netto **piu' basso**, ed e' lo
-   scostamento piu' grande.
-2. **Addizionale comunale**: qui e' una media derivata dai dati 2024, i simulatori usano l'aliquota
-   deliberata. Differenza di poche decine di euro l'anno, in entrambe le direzioni.
-3. **Detrazioni per carichi familiari**: i simulatori le espongono come input, qui sono azzerate per
-   assunzione. A parita' di impostazione (nessun familiare a carico) la voce non incide.
-4. **Arrotondamenti e ratei**: i cedolini reali arrotondano all'euro per mensilita' e distribuiscono
-   detrazioni e trattamento integrativo mese per mese.
+I due simulatori chiedono la **regione**, questa app chiede il **comune**: per il confronto si e'
+usato il capoluogo di ciascuna regione (Roma, Milano, Cagliari). Su Coverflex l'addizionale
+comunale non e' automatica e va inserita a mano, quindi il suo dato di partenza sull'addizionale
+comunale non e' necessariamente lo stesso.
+
+**Netto annuo**
+
+| Caso | Questa app | calcolostipendionetto | &Delta; | coverflex | &Delta; |
+|---|---|---|---|---|---|
+| 40.000 &euro; &middot; Lazio / Roma &middot; 13 | 27.039 | 27.742 | &minus;703 (&minus;2,5%) | 27.283 | &minus;244 (&minus;0,9%) |
+| 40.000 &euro; &middot; Lombardia / Milano &middot; 13 | 27.531 | 28.178 | &minus;647 (&minus;2,3%) | 27.868 | &minus;337 (&minus;1,2%) |
+| 20.000 &euro; &middot; Lombardia / Milano &middot; 12 | 17.339 | 18.162 | &minus;823 (&minus;4,5%) | 19.034 | &minus;1.695 (&minus;8,9%) |
+| 60.000 &euro; &middot; Sardegna / Cagliari &middot; 14 | 37.806 | 38.078 | &minus;272 (&minus;0,7%) | 37.311 | **+495** (+1,3%) |
+
+**Netto mensile**
+
+| Caso | Questa app | calcolostipendionetto | coverflex |
+|---|---|---|---|
+| 40.000 &euro; &middot; Lazio / Roma &middot; 13 | 2.079,89 | 2.134,00 | 2.099,00 |
+| 40.000 &euro; &middot; Lombardia / Milano &middot; 13 | 2.117,73 | 2.167,54 | 2.144,00 |
+| 20.000 &euro; &middot; Lombardia / Milano &middot; 12 | 1.444,88 | 1.513,50 | 1.586,00 |
+| 60.000 &euro; &middot; Sardegna / Cagliari &middot; 14 | 2.700,42 | 2.719,86 | 2.665,00 |
+
+#### Come leggere gli scostamenti
+
+**I due riferimenti non sono d'accordo tra loro.** Sullo stesso input divergono di 310 &euro; nel
+caso migliore e di **872 &euro; (4,8%)** sul caso da 20.000 &euro;. Non esiste quindi un valore
+"vero" contro cui misurarsi: il confronto dice se questa app sta dentro la forbice dei simulatori,
+non se e' esatta.
+
+1. **Il caso da 20.000 &euro; e' quello fuori scala**, e la causa e' nota: e' l'unico dei quattro
+   che ricade nella fascia 20.000&ndash;32.000 &euro; del **cuneo fiscale strutturale 2026, qui non
+   implementato per scelta**. Mancando la quota esente e la detrazione aggiuntiva, l'app sottostima
+   il netto di 823 &euro; rispetto a un riferimento e di 1.695 &euro; rispetto all'altro. E' anche
+   il caso su cui i due simulatori litigano di piu' tra loro, segno che stanno applicando il
+   meccanismo in due modi diversi.
+2. **Sui tre casi fuori da quella fascia lo scostamento sta tra &minus;2,5% e +1,3%**, ed e' in
+   parte spiegato dall'addizionale comunale: qui e' la media derivata dai dati MEF 2024 (Roma
+   0,871%, Milano 0,718%, Cagliari 0,699%), i simulatori usano l'aliquota deliberata o la chiedono
+   all'utente. Su 40.000 &euro; di RAL uno scarto di un decimo di punto vale circa 36 &euro; l'anno.
+3. **Sul caso da 60.000 &euro; l'app finisce in mezzo ai due riferimenti**: piu' bassa di
+   calcolostipendionetto, piu' alta di coverflex. Sopra i 50.000 &euro; le detrazioni da lavoro
+   dipendente sono azzerate e resta poco spazio di interpretazione, per questo la forbice si
+   stringe.
+4. **Restano differenze strutturali non riducibili**: i cedolini reali arrotondano all'euro per
+   mensilita' e distribuiscono detrazioni e trattamento integrativo mese per mese, mentre qui il
+   calcolo e' annuale e diviso per le mensilita' solo alla fine.
+
+In sintesi: **fuori dalla fascia del cuneo fiscale l'app sta nell'ordine dell'1&ndash;2% dai
+simulatori commerciali; dentro quella fascia sottostima il netto in modo prevedibile**, ed e' il
+prezzo dichiarato della scelta di non implementare a meta' un meccanismo che i due riferimenti
+stessi applicano in modo discordante.
 
 ## Deploy
 
