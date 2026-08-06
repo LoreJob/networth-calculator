@@ -1,0 +1,32 @@
+# Deploy su Render a ogni push su main.
+#
+# Render puo' anche auto-deployare da solo collegando il repo, ma tenere il trigger qui rende
+# esplicito quando e perche' parte un deploy, e lascia lo spazio per aggiungere prima dei
+# controlli bloccanti (qui: i test devono passare, altrimenti il deploy non parte).
+name: Deploy su Render
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests -q
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chiama il Deploy Hook di Render
+        # L'URL del hook e' un segreto: chi lo possiede puo' far partire un deploy.
+        run: curl --fail --silent --show-error "$RENDER_DEPLOY_HOOK"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}

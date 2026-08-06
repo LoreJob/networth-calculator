@@ -1,0 +1,14 @@
+# Infrastructure-as-Code di Render: il servizio si ricrea da qui, senza configurazione manuale
+# nella dashboard. In produzione l'app gira con gunicorn, non con il server di sviluppo Flask.
+services:
+  - type: web
+    name: networth-calculator
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.4"
