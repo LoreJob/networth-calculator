@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calcolatore RAL &rarr; Netto | Jet HR</title>
+  <link rel="icon" href="/brand/JetHR%20Pictogram%20Dark.svg">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="intestazione">
+  <img class="logo" id="logo" src="/brand/JetHR%20Logo%20Dark.svg" alt="Jet HR">
+  <button type="button" id="tema" class="tema" aria-label="Cambia tema">Tema scuro</button>
+</header>
+
+<main class="contenuto">
+
+  <section class="titolo">
+    <h1>Dalla RAL al netto in busta paga</h1>
+    <p>Simulazione della retribuzione netta annuale e mensile, con il dettaglio di ogni voce trattenuta.</p>
+  </section>
+
+  <div class="griglia">
+
+    <!-- ---------- form ---------- -->
+    <form class="scheda modulo" id="modulo" autocomplete="off">
+      <div class="campo">
+        <label for="ral">RAL &mdash; retribuzione annua lorda</label>
+        <div class="input-valuta">
+          <span aria-hidden="true">&euro;</span>
+          <!-- step="any": con uno step fisso il browser rifiuterebbe in silenzio i valori non
+               allineati (con step=500 e min=1, 35000 risulta invalido e il submit non parte). -->
+          <input type="number" id="ral" name="ral" min="1" step="any" inputmode="numeric"
+                 value="35000" required>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="comune">Comune di residenza fiscale</label>
+        <!-- Autocomplete costruito a mano: con quasi 8.000 comuni un <select> nativo
+             sarebbe inutilizzabile. La lista arriva da /api/comuni e il filtro e' locale. -->
+        <div class="autocomplete">
+          <input type="text" id="comune" placeholder="Inizia a digitare, es. Milano"
+                 role="combobox" aria-expanded="false" aria-autocomplete="list"
+                 aria-controls="suggerimenti" required>
+          <ul class="suggerimenti" id="suggerimenti" role="listbox" hidden></ul>
+        </div>
+        <p class="derivato" id="derivato">La regione si compila da sola in base al comune scelto.</p>
+      </div>
+
+      <div class="campo">
+        <label for="mensilita">Mensilit&agrave;</label>
+        <select id="mensilita">
+          {% for m in mensilita_ammesse %}
+          <option value="{{ m }}" {% if m == mensilita_default %}selected{% endif %}>{{ m }} mensilit&agrave;</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit" class="calcola" id="calcola">
+        <img src="/brand/JetHR%20Pictogram%20White.svg" alt="" aria-hidden="true" class="pittogramma">
+        Calcola il netto
+      </button>
+
+      <p class="errore" id="errore" role="alert" hidden></p>
+    </form>
+
+    <!-- ---------- risultati ---------- -->
+    <div class="risultati" id="risultati" hidden>
+
+      <section class="scheda evidenza">
+        <div class="numero-grande">
+          <span class="etichetta">Netto annuo</span>
+          <strong id="netto-annuo">&mdash;</strong>
+        </div>
+        <div class="numero-grande">
+          <span class="etichetta">Netto mensile <em id="etichetta-mensilita"></em></span>
+          <strong id="netto-mensile">&mdash;</strong>
+        </div>
+      </section>
+
+      <section class="scheda">
+        <h2>Dalla RAL al netto</h2>
+        <!-- Waterfall disegnato con div proporzionali: nessuna libreria, nessuna CDN. -->
+        <div class="waterfall" id="waterfall"></div>
+      </section>
+
+      <section class="scheda tfr">
+        <h2>TFR maturato nell&rsquo;anno</h2>
+        <strong id="tfr">&mdash;</strong>
+        <p>Accantonamento, <b>non incluso nel netto percepito</b>: viene liquidato alla cessazione
+           del rapporto o destinato a un fondo pensione.</p>
+      </section>
+
+      <section class="scheda dettaglio">
+        <h2>Dettaglio delle voci</h2>
+        <dl id="dettaglio"></dl>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ---------- ipotesi ---------- -->
+  <details class="scheda ipotesi">
+    <summary>Ipotesi di calcolo</summary>
+    <ul>
+      <li>Lavoratore dipendente a tempo indeterminato, <b>nessun carico familiare</b>: le aliquote
+          e le detrazioni agevolate che diverse regioni riservano a chi ha figli o familiari
+          disabili a carico non vengono applicate.</li>
+      <li>Anno intero lavorato, nessuna variazione contrattuale in corso d&rsquo;anno.</li>
+      <li>Reddito da lavoro dipendente come unica fonte di reddito.</li>
+      <li>Contributi INPS al 9,19% su tutta la RAL: nessun massimale contributivo superato e
+          nessuna aliquota aggiuntiva sulla quota eccedente la prima fascia pensionabile.</li>
+      <li>Nessun fringe benefit, straordinario, premio di risultato o welfare aziendale.</li>
+      <li>Comune di residenza fiscale scelto liberamente tra i 7.817 presenti nel dataset MEF 2024;
+          la regione per l&rsquo;addizionale regionale <b>si deriva dal comune</b>, quindi i due
+          livelli non possono essere incoerenti tra loro.</li>
+      <li>80 comuni sono esclusi dalla selezione perch&eacute; il dataset MEF non riporta
+          l&rsquo;addizionale comunale dovuta e l&rsquo;aliquota non e&rsquo; derivabile.</li>
+      <li>Addizionali regionale e comunale calcolate sullo stesso anno, mentre in busta paga sono
+          trattenute a saldo e in acconto nell&rsquo;anno successivo.</li>
+      <li>Cuneo fiscale strutturale 2026 (quota esente e detrazione aggiuntiva per la fascia
+          20.000&ndash;32.000 euro) <b>non implementato</b>: nella realt&agrave; alza il netto in
+          quella fascia.</li>
+      <li>Aliquota comunale derivata indirettamente dai dati 2024 (addizionale dovuta divisa per
+          reddito imponibile addizionale), non letta da delibera: appiattisce soglie di esenzione
+          e scaglioni comunali in un unico valore medio.</li>
+    </ul>
+  </details>
+
+  <p class="disclaimer">
+    Simulazione semplificata a fini dimostrativi, non sostituisce un cedolino reale.
+  </p>
+
+</main>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

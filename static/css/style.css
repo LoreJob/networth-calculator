@@ -1,0 +1,336 @@
+/* Palette derivata dagli asset di brand in logo_pictogram/ e product_images/:
+   #11150A  colore dei logo e dei pittogrammi JetHR
+   #C5DDA1  verde di sfondo delle immagini di prodotto
+   #F2F4F1  grigio delle superfici secondarie
+   #67C239  verde degli indicatori positivi
+   #F46C6C  rosso degli indicatori negativi                                                     */
+
+:root {
+  --ink: #11150A;
+  --brand: #C5DDA1;
+  --surface: #FFFFFF;
+  --surface-alt: #F2F4F1;
+  --positivo: #67C239;
+  --negativo: #F46C6C;
+
+  --sfondo: var(--brand);
+  --testo: var(--ink);
+  --testo-tenue: #5C6152;
+  --bordo: #E3E7DE;
+  --scheda: var(--surface);
+
+  --raggio: 16px;
+  --raggio-piccolo: 10px;
+  --ombra: 0 1px 2px rgba(17, 21, 10, .06), 0 8px 24px rgba(17, 21, 10, .06);
+}
+
+/* Il tema scuro parte dalla preferenza di sistema ed e' sovrascrivibile con il toggle. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sfondo: #0C0F07;
+    --testo: #F3F6EE;
+    --testo-tenue: #A2A99A;
+    --bordo: #262B1D;
+    --scheda: #171C11;
+    --surface-alt: #1F2517;
+    --ombra: none;
+  }
+}
+
+:root[data-theme="dark"] {
+  --sfondo: #0C0F07;
+  --testo: #F3F6EE;
+  --testo-tenue: #A2A99A;
+  --bordo: #262B1D;
+  --scheda: #171C11;
+  --surface-alt: #1F2517;
+  --ombra: none;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 1rem 4rem;
+  background: var(--sfondo);
+  color: var(--testo);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- intestazione --- */
+
+.intestazione {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1.5rem 0;
+}
+
+/* Logo scuro e logo bianco sono due file distinti: lo scambio del src lo fa app.js,
+   perche' deve seguire anche il toggle manuale e non solo la preferenza di sistema. */
+.logo { height: 28px; width: auto; }
+
+.tema {
+  border: 1px solid var(--bordo);
+  background: var(--scheda);
+  color: var(--testo);
+  border-radius: 999px;
+  padding: .45rem 1rem;
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+.tema:hover { border-color: var(--testo-tenue); }
+
+/* --- layout --- */
+
+.contenuto { max-width: 1080px; margin: 0 auto; }
+
+.titolo { margin-bottom: 1.5rem; }
+.titolo h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 .5rem; letter-spacing: -.02em; }
+.titolo p { margin: 0; color: var(--testo-tenue); max-width: 46ch; }
+
+.griglia { display: grid; gap: 1rem; align-items: start; }
+
+@media (min-width: 860px) {
+  .griglia { grid-template-columns: 360px 1fr; }
+  .titolo h1 { font-size: 2.4rem; }
+  /* Il form resta a vista mentre si scorrono i risultati. Solo da qui in su: su mobile la
+     colonna e' unica e un form sticky coprirebbe il breakdown invece di affiancarlo. */
+  .modulo { position: sticky; top: 1rem; }
+}
+
+.scheda {
+  background: var(--scheda);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  padding: 1.25rem;
+  box-shadow: var(--ombra);
+}
+
+.scheda + .scheda, .risultati > * + * { margin-top: 1rem; }
+
+.scheda h2 {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--testo-tenue);
+  margin: 0 0 1rem;
+}
+
+/* --- form --- */
+
+.campo { margin-bottom: 1.1rem; }
+
+.campo label {
+  display: block;
+  font-size: .85rem;
+  font-weight: 600;
+  margin-bottom: .4rem;
+}
+
+input[type="number"], input[type="text"], select {
+  width: 100%;
+  padding: .7rem .85rem;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-piccolo);
+  background: var(--surface-alt);
+  color: var(--testo);
+  font: inherit;
+}
+
+input:focus, select:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  background: var(--scheda);
+}
+
+:root[data-theme="dark"] input:focus,
+:root[data-theme="dark"] select:focus { outline-color: var(--brand); }
+
+.input-valuta { position: relative; }
+.input-valuta span {
+  position: absolute;
+  left: .85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--testo-tenue);
+  pointer-events: none;
+}
+.input-valuta input { padding-left: 1.9rem; }
+
+.derivato {
+  margin: .45rem 0 0;
+  font-size: .82rem;
+  color: var(--testo-tenue);
+  min-height: 1.2em;
+}
+.derivato.attivo { color: var(--testo); font-weight: 600; }
+
+/* --- autocomplete --- */
+
+.autocomplete { position: relative; }
+
+.suggerimenti {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: .25rem;
+  list-style: none;
+  background: var(--scheda);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-piccolo);
+  box-shadow: 0 12px 28px rgba(17, 21, 10, .16);
+  max-height: 17rem;
+  overflow-y: auto;
+}
+
+.suggerimenti li {
+  padding: .5rem .6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .9rem;
+}
+
+.suggerimenti li small { color: var(--testo-tenue); }
+.suggerimenti li[aria-selected="true"], .suggerimenti li:hover { background: var(--surface-alt); }
+.suggerimenti .vuoto { color: var(--testo-tenue); cursor: default; }
+
+/* --- bottone --- */
+
+.calcola {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  padding: .85rem 1rem;
+  border: 0;
+  border-radius: var(--raggio-piccolo);
+  background: var(--ink);
+  color: #FFF;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.calcola:hover { opacity: .9; }
+.calcola:disabled { opacity: .55; cursor: progress; }
+.pittogramma { height: 18px; width: 18px; }
+
+:root[data-theme="dark"] .calcola { background: var(--brand); color: var(--ink); }
+:root[data-theme="dark"] .pittogramma { filter: invert(1); }
+
+.errore {
+  margin: .8rem 0 0;
+  padding: .6rem .75rem;
+  border-radius: var(--raggio-piccolo);
+  background: rgba(244, 108, 108, .14);
+  color: var(--negativo);
+  font-size: .87rem;
+}
+
+/* --- risultati --- */
+
+.evidenza { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+
+.numero-grande .etichetta {
+  display: block;
+  font-size: .8rem;
+  color: var(--testo-tenue);
+  margin-bottom: .25rem;
+}
+
+.numero-grande em { font-style: normal; }
+
+.numero-grande strong {
+  display: block;
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
+  letter-spacing: -.03em;
+  line-height: 1.1;
+}
+
+/* --- waterfall: barre proporzionali, nessuna libreria --- */
+
+.waterfall { display: grid; gap: .55rem; }
+
+.riga-waterfall {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1.1fr) 3fr minmax(6.5rem, auto);
+  gap: .75rem;
+  align-items: center;
+  font-size: .87rem;
+}
+
+.riga-waterfall .voce { color: var(--testo-tenue); }
+.riga-waterfall .importo { text-align: right; font-variant-numeric: tabular-nums; }
+
+.barra { background: var(--surface-alt); border-radius: 6px; height: 22px; position: relative; }
+
+.barra i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 6px;
+  min-width: 2px;
+}
+
+.barra i.inizio, .barra i.fine { background: var(--ink); }
+.barra i.sottrazione { background: var(--negativo); }
+.barra i.aggiunta { background: var(--positivo); }
+
+:root[data-theme="dark"] .barra i.inizio,
+:root[data-theme="dark"] .barra i.fine { background: var(--brand); }
+
+.riga-waterfall.totale { font-weight: 700; }
+.riga-waterfall.totale .voce { color: var(--testo); }
+
+@media (max-width: 520px) {
+  .riga-waterfall { grid-template-columns: 1fr auto; }
+  .riga-waterfall .barra { grid-column: 1 / -1; }
+  .evidenza { grid-template-columns: 1fr; }
+}
+
+/* --- TFR e dettaglio --- */
+
+.tfr strong { display: block; font-size: 1.6rem; letter-spacing: -.02em; }
+.tfr p { margin: .5rem 0 0; font-size: .84rem; color: var(--testo-tenue); }
+
+.dettaglio dl { margin: 0; display: grid; gap: .1rem; }
+
+.dettaglio .voce-dettaglio {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .55rem 0;
+  border-bottom: 1px solid var(--bordo);
+  font-size: .89rem;
+}
+
+.dettaglio .voce-dettaglio:last-child { border-bottom: 0; }
+.dettaglio dt { color: var(--testo-tenue); }
+.dettaglio dd { margin: 0; font-variant-numeric: tabular-nums; }
+.dettaglio .nota { font-size: .78rem; color: var(--testo-tenue); display: block; }
+
+/* --- ipotesi e disclaimer --- */
+
+.ipotesi { margin-top: 1.5rem; }
+.ipotesi summary { cursor: pointer; font-weight: 600; }
+.ipotesi ul { margin: 1rem 0 0; padding-left: 1.1rem; color: var(--testo-tenue); font-size: .88rem; }
+.ipotesi li { margin-bottom: .5rem; }
+
+.disclaimer {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: .82rem;
+  color: var(--testo-tenue);
+}
