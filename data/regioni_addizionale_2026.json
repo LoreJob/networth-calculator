@@ -1,0 +1,329 @@
+{
+  "REGIONE VALLE D'AOSTA": {
+    "modalita": "unica",
+    "aliquota": 0.0123
+  },
+  "REGIONE UMBRIA": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.0173
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0302
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.031200000000000002
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0333
+      }
+    ]
+  },
+  "REGIONE FRIULI VENEZIA GIULIA": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.006999999999999999
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0123
+      }
+    ]
+  },
+  "REGIONE EMILIA-ROMAGNA": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.013300000000000001
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.019299999999999998
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0278
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0333
+      }
+    ]
+  },
+  "REGIONE MARCHE": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.015300000000000001
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.017
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0173
+      }
+    ]
+  },
+  "PROVINCIA AUTONOMA DI TRENTO": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0173
+      }
+    ]
+  },
+  "REGIONE VENETO": {
+    "modalita": "unica",
+    "aliquota": 0.0123
+  },
+  "REGIONE LAZIO": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.0173
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0333
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0333
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0333
+      }
+    ]
+  },
+  "REGIONE ABRUZZO": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0167
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0287
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0333
+      }
+    ]
+  },
+  "REGIONE LIGURIA": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0318
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0323
+      }
+    ]
+  },
+  "REGIONE LOMBARDIA": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0158
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0172
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0173
+      }
+    ]
+  },
+  "REGIONE CALABRIA": {
+    "modalita": "unica",
+    "aliquota": 0.0173
+  },
+  "PROVINCIA AUTONOMA DI BOLZANO": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0123
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0173
+      }
+    ]
+  },
+  "REGIONE SICILIA": {
+    "modalita": "unica",
+    "aliquota": 0.0123
+  },
+  "REGIONE SARDEGNA": {
+    "modalita": "unica",
+    "aliquota": 0.0123
+  },
+  "REGIONE PIEMONTE": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.016200000000000003
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0268
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0331
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0333
+      }
+    ]
+  },
+  "REGIONE CAMPANIA": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.0173
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0296
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.032
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0333
+      }
+    ]
+  },
+  "REGIONE BASILICATA": {
+    "modalita": "unica",
+    "aliquota": 0.0123
+  },
+  "REGIONE TOSCANA": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.014199999999999999
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0143
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0332
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0333
+      }
+    ]
+  },
+  "REGIONE PUGLIA": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.013300000000000001
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0213
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0323
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0333
+      }
+    ]
+  },
+  "REGIONE MOLISE": {
+    "modalita": "scaglioni",
+    "scaglioni": [
+      {
+        "fino_a": 15000.0,
+        "aliquota": 0.0203
+      },
+      {
+        "fino_a": 28000.0,
+        "aliquota": 0.0223
+      },
+      {
+        "fino_a": 50000.0,
+        "aliquota": 0.0363
+      },
+      {
+        "fino_a": null,
+        "aliquota": 0.0363
+      }
+    ]
+  }
+}
