@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+.venv/
+.env
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Dataset MEF grezzi: pesanti e non serventi a runtime.
+# L'app usa solo i JSON normalizzati in data/, che invece sono versionati.
+# Per rigenerarli servono i CSV originali (link in sources.md).
+data/*.csv
+
+# Materiale di riferimento per lo stile, non usato dall'applicazione
+product_images/
