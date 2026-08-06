@@ -1,5 +1,8 @@
 # Calcolatore RAL &rarr; Netto
 
+**Demo live: <https://networth-calculator-x8rk.onrender.com/>**
+(gira sul piano gratuito di Render: se e' in sleep, la prima richiesta impiega 30&ndash;60 secondi)
+
 Prototipo web che, data una RAL e un comune di residenza fiscale, proietta la retribuzione netta
 annuale e mensile mostrando ogni voce trattenuta lungo il percorso: contributi INPS, IRPEF netta,
 addizionale regionale, addizionale comunale e trattamento integrativo.
@@ -204,6 +207,8 @@ simulatore pubblico e annotando lo scostamento. Gli scostamenti attesi, in ordin
    detrazioni e trattamento integrativo mese per mese.
 
 ## Deploy
+
+L'app e' online su <https://networth-calculator-x8rk.onrender.com/>.
 
 Il servizio gira su **Render**, piano gratuito, con `gunicorn app:app`
 (vedi [`render.yaml`](render.yaml)). Il workflow in
