@@ -11,7 +11,7 @@ import os
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from calc import addizionali
-from calc.pipeline import MENSILITA_AMMESSE, MENSILITA_DEFAULT, calcola
+from calc.pipeline import MENSILITA_AMMESSE, MENSILITA_DEFAULT, RAL_MINIMA, calcola
 
 app = Flask(__name__)
 
@@ -24,7 +24,12 @@ RAL_MASSIMA = 10_000_000
 
 @app.get("/")
 def home():
-    return render_template("index.html", mensilita_ammesse=MENSILITA_AMMESSE, mensilita_default=MENSILITA_DEFAULT)
+    return render_template(
+        "index.html",
+        mensilita_ammesse=MENSILITA_AMMESSE,
+        mensilita_default=MENSILITA_DEFAULT,
+        ral_minima=int(RAL_MINIMA),
+    )
 
 
 # I loghi e le immagini di prodotto restano nelle cartelle originali del repo invece di essere
@@ -62,8 +67,11 @@ def api_calcola():
         ral = float(dati.get("ral"))
     except (TypeError, ValueError):
         return jsonify({"errore": "RAL mancante o non numerica"}), 400
-    if not 0 < ral <= RAL_MASSIMA:
-        return jsonify({"errore": f"La RAL deve essere compresa tra 1 e {RAL_MASSIMA} euro"}), 400
+    if ral > RAL_MASSIMA:
+        massima = f"{RAL_MASSIMA:,.0f}".replace(",", ".")
+        return jsonify({"errore": f"La RAL non puo' superare {massima} euro"}), 400
+    # Il limite inferiore lo impone la pipeline, che sa perche' esiste: qui non si duplica
+    # la soglia, si lascia risalire il ValueError con il suo messaggio.
 
     try:
         mensilita = int(dati.get("mensilita", MENSILITA_DEFAULT))

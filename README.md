@@ -74,14 +74,14 @@ disegnare la risposta. Le due API sono:
 |---|---|---|
 | 1 | Imponibile previdenziale | = RAL |
 | 2 | Contributi INPS | imponibile previdenziale &times; 9,19% |
-| 3 | Imponibile fiscale | RAL &minus; contributi INPS |
+| 3 | Imponibile fiscale | RAL - contributi INPS |
 | 4 | IRPEF lorda | 23% fino a 28.000, 33% da 28.000 a 50.000, 43% oltre |
 | 5 | Detrazione lavoro dipendente | art. 13 co. 1 TUIR, + 65 &euro; se 25.000 &lt; R &le; 35.000 |
-| 6 | IRPEF netta | max(0, lorda &minus; detrazione) |
+| 6 | IRPEF netta | max(0, lorda - detrazione) |
 | 7 | Addizionale regionale | lookup per regione derivata dal comune |
 | 8 | Addizionale comunale | imponibile fiscale &times; aliquota del comune |
 | 9 | Trattamento integrativo | 1.200 &euro; fino a 15.000, phase-out lineare fino a 28.000 |
-| 10 | Netto annuo | imponibile fiscale &minus; IRPEF netta &minus; addizionali + trattamento integrativo |
+| 10 | Netto annuo | imponibile fiscale - IRPEF netta - addizionali + trattamento integrativo |
 | 11 | Netto mensile | netto annuo / mensilita' (12, 13 o 14) |
 | 12 | TFR maturato | RAL / 13,5 &mdash; **fuori dal netto**, mostrato a parte |
 
@@ -131,7 +131,9 @@ aliquota_comunale = "Addizionale comunale dovuta" / "Reddito imponibile addizion
   (Marche, Umbria, Puglia, Sardegna, Veneto, Trento, Bolzano) prevedono aliquote agevolate o
   detrazioni condizionate a figli o familiari disabili a carico: sono ignorate e si usa sempre
   l'aliquota base per fascia di reddito.
-- Anno intero lavorato, nessuna variazione contrattuale in corso d'anno.
+- Anno intero lavorato, nessuna variazione contrattuale in corso d'anno: part-time e mesi lavorati
+  non sono modellati, ed e' anche il motivo per cui esiste una RAL minima simulabile (vedi
+  [Limiti noti](#limiti-noti)).
 - Reddito da lavoro dipendente come unica fonte di reddito.
 - Contributi INPS al 9,19% su tutta la RAL, senza massimale contributivo (circa 120.000 &euro;) e
   senza l'aliquota aggiuntiva sulla quota eccedente la prima fascia pensionabile: per RAL molto alte
@@ -154,7 +156,17 @@ aliquota_comunale = "Addizionale comunale dovuta" / "Reddito imponibile addizion
   un'unica aliquota piatta non puo' riprodurre: sul dato 2024 Milano risulta allo 0,718% contro lo
   0,8% deliberato, proprio perche' la media incorpora i redditi esentati.
 - **Trattamento integrativo approssimato**: si usa il phase-out lineare sul reddito, senza la
-  verifica di capienza rispetto alle detrazioni prevista dalla norma.
+  verifica di capienza rispetto alle detrazioni prevista dalla norma. Da qui discende il limite
+  qui sotto.
+- **RAL minima simulabile: 11.000 &euro;.** Su RAL basse le detrazioni azzerano gia' l'IRPEF, e il
+  trattamento integrativo forfettario si somma a un'imposta che e' gia' zero: il risultato sarebbe
+  un netto **superiore alla RAL** (con 3.000 &euro; di RAL il modello, non fermato, restituirebbe
+  3.871 &euro;). La soglia e' misurata, non scelta a occhio: e' il punto oltre il quale il netto
+  torna sotto la RAL anche nel caso peggiore, cioe' un comune senza addizionale comunale in una
+  regione con addizionale regionale minima, dove il crossover cade a circa 10.120 &euro;. Sotto
+  la soglia l'API risponde 400 con la spiegazione e la UI mostra l'errore, invece di produrre un
+  numero senza senso. La correzione strutturale sarebbe implementare la capienza del trattamento
+  integrativo, che pero' e' fuori dal perimetro dichiarato del prototipo.
 
 ## Validazione
 
@@ -207,10 +219,10 @@ comunale non e' necessariamente lo stesso.
 
 | Caso | Questa app | calcolostipendionetto | &Delta; | coverflex | &Delta; |
 |---|---|---|---|---|---|
-| 40.000 &euro; &middot; Lazio / Roma &middot; 13 | 27.039 | 27.742 | &minus;703 (&minus;2,5%) | 27.283 | &minus;244 (&minus;0,9%) |
-| 40.000 &euro; &middot; Lombardia / Milano &middot; 13 | 27.531 | 28.178 | &minus;647 (&minus;2,3%) | 27.868 | &minus;337 (&minus;1,2%) |
-| 20.000 &euro; &middot; Lombardia / Milano &middot; 12 | 17.339 | 18.162 | &minus;823 (&minus;4,5%) | 19.034 | &minus;1.695 (&minus;8,9%) |
-| 60.000 &euro; &middot; Sardegna / Cagliari &middot; 14 | 37.806 | 38.078 | &minus;272 (&minus;0,7%) | 37.311 | **+495** (+1,3%) |
+| 40.000 &euro; &middot; Lazio / Roma &middot; 13 | 27.039 | 27.742 | -703 (-2,5%) | 27.283 | -244 (-0,9%) |
+| 40.000 &euro; &middot; Lombardia / Milano &middot; 13 | 27.531 | 28.178 | -647 (-2,3%) | 27.868 | -337 (-1,2%) |
+| 20.000 &euro; &middot; Lombardia / Milano &middot; 12 | 17.339 | 18.162 | -823 (-4,5%) | 19.034 | -1.695 (-8,9%) |
+| 60.000 &euro; &middot; Sardegna / Cagliari &middot; 14 | 37.806 | 38.078 | -272 (-0,7%) | 37.311 | **+495** (+1,3%) |
 
 **Netto mensile**
 
@@ -234,7 +246,7 @@ non se e' esatta.
    il netto di 823 &euro; rispetto a un riferimento e di 1.695 &euro; rispetto all'altro. E' anche
    il caso su cui i due simulatori litigano di piu' tra loro, segno che stanno applicando il
    meccanismo in due modi diversi.
-2. **Sui tre casi fuori da quella fascia lo scostamento sta tra &minus;2,5% e +1,3%**, ed e' in
+2. **Sui tre casi fuori da quella fascia lo scostamento sta tra -2,5% e +1,3%**, ed e' in
    parte spiegato dall'addizionale comunale: qui e' la media derivata dai dati MEF 2024 (Roma
    0,871%, Milano 0,718%, Cagliari 0,699%), i simulatori usano l'aliquota deliberata o la chiedono
    all'utente. Su 40.000 &euro; di RAL uno scarto di un decimo di punto vale circa 36 &euro; l'anno.

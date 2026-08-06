@@ -179,6 +179,25 @@
     evento.preventDefault();
     el.errore.hidden = true;
 
+    // La soglia arriva dal server (data-minima) invece di essere riscritta qui: la ragione per
+    // cui esiste sta nella pipeline, e un solo posto deve deciderla.
+    var minima = Number(el.ral.dataset.minima);
+    var ral = Number(el.ral.value);
+
+    if (!el.ral.value.trim() || !isFinite(ral)) {
+      mostraErrore("Inserisci la RAL come valore numerico.");
+      el.ral.focus();
+      return;
+    }
+    if (ral < minima) {
+      mostraErrore(
+        "La RAL minima simulabile è " + euro.format(minima) +
+        ". Sotto questa soglia il trattamento integrativo semplificato supera l'imposta dovuta " +
+        "e il netto risulterebbe più alto della RAL."
+      );
+      el.ral.focus();
+      return;
+    }
     if (!comuneScelto) {
       mostraErrore("Seleziona un comune dall'elenco dei suggerimenti.");
       el.comune.focus();
@@ -228,6 +247,13 @@
     var cumulato = 0;
     el.waterfall.innerHTML = "";
 
+    // Percentuali sempre dentro la barra: se una voce eccedesse la scala (RAL), il div
+    // sborderebbe dalla card invece di essere tagliato.
+    function pct(valore) {
+      if (!(scala > 0) || !isFinite(valore)) return 0;
+      return Math.min(100, Math.max(0, valore / scala * 100));
+    }
+
     voci.forEach(function (voce, indice) {
       var estremo = indice === 0 || indice === voci.length - 1;
       var inizio, larghezza;
@@ -251,7 +277,7 @@
       var barra = voce.importo === 0
         ? '<span class="barra"></span>'
         : '<span class="barra"><i class="' + voce.tipo + '" style="left:' +
-          (inizio / scala * 100) + "%;width:" + (larghezza / scala * 100) + '%"></i></span>';
+          pct(inizio) + "%;width:" + pct(larghezza) + '%"></i></span>';
       riga.innerHTML =
         '<span class="voce">' + voce.etichetta + "</span>" + barra +
         '<span class="importo">' + euro.format(voce.importo) + "</span>";

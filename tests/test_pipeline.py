@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from calc import addizionali, detrazioni, irpef, trattamento_integrativo  # noqa: E402
 from calc.inps import ALIQUOTA_INPS_DIPENDENTE  # noqa: E402
-from calc.pipeline import calcola  # noqa: E402
+from calc.pipeline import RAL_MINIMA, calcola  # noqa: E402
 
 MILANO = "F205"
 ROMA = "H501"
@@ -177,6 +177,29 @@ def test_input_non_validi():
         calcola(30_000, MILANO, 15)
     with pytest.raises(KeyError):
         calcola(30_000, "ZZZZ", 13)
+
+
+@pytest.mark.parametrize("ral", [1, 3_000, 9_000, RAL_MINIMA - 1])
+def test_ral_sotto_la_soglia_rifiutata(ral):
+    """Sotto la soglia il calcolo va rifiutato, non approssimato.
+
+    Con il trattamento integrativo forfettario, su RAL basse le detrazioni azzerano gia' l'IRPEF
+    e i 1.200 euro si sommano a un'imposta nulla: il "netto" supererebbe la RAL.
+    """
+    with pytest.raises(ValueError):
+        calcola(ral, MILANO, 13)
+
+
+def test_alla_soglia_il_netto_resta_sotto_la_ral_ovunque():
+    """La soglia deve reggere anche nel caso peggiore, non solo a Milano.
+
+    Il caso peggiore e' un comune senza addizionale comunale in una regione con addizionale
+    regionale minima: e' li' che il netto si avvicina di piu' alla RAL.
+    """
+    peggiore = min(addizionali.elenco_comuni(), key=lambda c: c["aliquota"])
+    for ral in (RAL_MINIMA, RAL_MINIMA + 500, 15_000):
+        netto = calcola(ral, peggiore["codice"], 13)["risultato"]["netto_annuo"]
+        assert netto < ral, f"netto {netto} >= RAL {ral} a {peggiore['nome']}"
 
 
 def test_comuni_omonimi_restano_distinti():

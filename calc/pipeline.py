@@ -11,6 +11,19 @@ from calc import addizionali, detrazioni, inps, irpef, tfr, trattamento_integrat
 MENSILITA_AMMESSE = (12, 13, 14)
 MENSILITA_DEFAULT = 13
 
+# RAL minima simulabile.
+#
+# Il trattamento integrativo e' implementato come importo forfettario (1.200 euro pieni fino a
+# 15.000 euro di imponibile), mentre la norma lo subordina alla capienza delle detrazioni. Su RAL
+# basse le detrazioni azzerano gia' l'IRPEF, quindi i 1.200 euro si sommano a un'imposta che e'
+# gia' zero e il "netto" finisce sopra la RAL: a 3.000 euro di RAL il modello restituirebbe 3.871.
+#
+# La soglia non e' scelta a occhio: e' il punto oltre il quale il netto torna inferiore alla RAL
+# anche nel caso peggiore, cioe' un comune senza addizionale comunale in una regione con
+# addizionale regionale minima (crossover misurato a circa 10.120 euro). Sotto la soglia il
+# calcolo viene rifiutato invece di restituire un numero privo di senso.
+RAL_MINIMA = 11_000.0
+
 
 def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) -> dict:
     """Proiezione del netto annuo e mensile a partire dalla RAL.
@@ -32,8 +45,13 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
     Gli importi non vengono arrotondati durante il calcolo: l'arrotondamento avviene solo in
     uscita, per non propagare errori tra un passaggio e l'altro.
     """
-    if ral <= 0:
-        raise ValueError("La RAL deve essere positiva")
+    if ral < RAL_MINIMA:
+        # Separatore delle migliaia all'italiana: il formato di default e' quello inglese.
+        soglia = f"{RAL_MINIMA:,.0f}".replace(",", ".")
+        raise ValueError(
+            f"Sotto {soglia} euro di RAL la simulazione non e' attendibile: "
+            "il trattamento integrativo semplificato supererebbe l'imposta dovuta"
+        )
     if mensilita not in MENSILITA_AMMESSE:
         raise ValueError(f"Mensilita' non ammessa: {mensilita}")
 

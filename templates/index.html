@@ -24,16 +24,22 @@
   <div class="griglia">
 
     <!-- ---------- form ---------- -->
-    <form class="scheda modulo" id="modulo" autocomplete="off">
+    <!-- novalidate: la validazione la fa app.js, cosi' i messaggi sono in linea con la pagina.
+         Lasciandola al browser, un valore fuori range bloccherebbe il submit prima che il
+         nostro handler possa spiegare all'utente cosa non va. -->
+    <form class="scheda modulo" id="modulo" autocomplete="off" novalidate>
       <div class="campo">
-        <label for="ral">RAL &mdash; retribuzione annua lorda</label>
+        <label for="ral">RAL (retribuzione annua lorda)</label>
         <div class="input-valuta">
           <span aria-hidden="true">&euro;</span>
           <!-- step="any": con uno step fisso il browser rifiuterebbe in silenzio i valori non
                allineati (con step=500 e min=1, 35000 risulta invalido e il submit non parte). -->
-          <input type="number" id="ral" name="ral" min="1" step="any" inputmode="numeric"
-                 value="35000" required>
+          <input type="number" id="ral" name="ral" min="{{ ral_minima }}" step="any"
+                 inputmode="numeric" value="35000" data-minima="{{ ral_minima }}" required>
         </div>
+        <p class="nota-campo">Da {{ "{:,.0f}".format(ral_minima).replace(",", ".") }}&nbsp;&euro; in su:
+           sotto questa soglia il trattamento integrativo semplificato supera l&rsquo;imposta dovuta
+           e il risultato non avrebbe senso.</p>
       </div>
 
       <div class="campo">
@@ -108,7 +114,10 @@
       <li>Lavoratore dipendente a tempo indeterminato, <b>nessun carico familiare</b>: le aliquote
           e le detrazioni agevolate che diverse regioni riservano a chi ha figli o familiari
           disabili a carico non vengono applicate.</li>
-      <li>Anno intero lavorato, nessuna variazione contrattuale in corso d&rsquo;anno.</li>
+      <li>Anno intero lavorato, nessuna variazione contrattuale in corso d&rsquo;anno. Per lo stesso
+          motivo la RAL minima simulabile e&rsquo; {{ "{:,.0f}".format(ral_minima).replace(",", ".") }}&nbsp;&euro;:
+          sotto quella soglia il netto reale dipende da part-time e mesi lavorati, che qui non
+          sono modellati.</li>
       <li>Reddito da lavoro dipendente come unica fonte di reddito.</li>
       <li>Contributi INPS al 9,19% su tutta la RAL: nessun massimale contributivo superato e
           nessuna aliquota aggiuntiva sulla quota eccedente la prima fascia pensionabile.</li>
