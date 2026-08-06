@@ -14,8 +14,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - run: pip install -r requirements.txt
@@ -27,6 +27,17 @@ jobs:
     steps:
       - name: Chiama il Deploy Hook di Render
         # L'URL del hook e' un segreto: chi lo possiede puo' far partire un deploy.
-        run: curl --fail --silent --show-error "$RENDER_DEPLOY_HOOK"
+        #
+        # Se il secret non e' configurato, curl riceverebbe una stringa vuota e uscirebbe con
+        # codice 3 (URL malformato), colorando di rosso un workflow che in realta' non ha
+        # nulla di rotto. Meglio dirlo e fermarsi: Render resta comunque in grado di
+        # auto-deployare da solo se il repo e' collegato.
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::warning::Secret RENDER_DEPLOY_HOOK non configurato: deploy non richiesto da qui."
+            exit 0
+          fi
+          curl --fail --silent --show-error "$RENDER_DEPLOY_HOOK"
+          echo "Deploy richiesto a Render."
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}

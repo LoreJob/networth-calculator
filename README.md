@@ -269,8 +269,19 @@ L'app e' online su <https://networth-calculator-x8rk.onrender.com/>.
 
 Il servizio gira su **Render**, piano gratuito, con `gunicorn app:app`
 (vedi [`render.yaml`](render.yaml)). Il workflow in
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) chiama il Deploy Hook di Render a
-ogni push su `main`, usando il secret `RENDER_DEPLOY_HOOK`.
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) esegue i test a ogni push su `main`
+e, solo se passano, chiama il Deploy Hook di Render.
+
+**Configurazione del hook.** L'URL del Deploy Hook si copia da Render (Settings &rarr; Deploy Hook)
+e si salva come secret **su GitHub**, non su Render: e' GitHub Actions a doverlo chiamare, e le
+variabili d'ambiente di Render sono visibili solo al processo dell'app gia' in esecuzione.
+Percorso: repo &rarr; Settings &rarr; Secrets and variables &rarr; Actions &rarr; nuovo secret
+`RENDER_DEPLOY_HOOK`. Finche' il secret non c'e', il passo di deploy segnala un warning e termina
+senza errore, invece di far fallire il workflow.
+
+Se il repo e' anche collegato direttamente a Render con l'auto-deploy attivo, ogni push ne fa
+partire **due**: conviene disattivare l'auto-deploy nelle impostazioni del servizio e lasciare che
+sia il workflow a decidere quando deployare, cosi' il deploy parte solo a test verdi.
 
 > **Nota sul tier gratuito:** dopo 15 minuti di inattivita' il servizio va in sleep e la prima
 > richiesta successiva impiega 30&ndash;60 secondi per risvegliarlo. E' il comportamento noto del
