@@ -13,7 +13,7 @@ from calc.scaglioni import applica_scaglioni
 
 DIR_DATI = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 JSON_REGIONI = os.path.join(DIR_DATI, "regioni_addizionale_2026.json")
-JSON_COMUNI = os.path.join(DIR_DATI, "comuni_addizionale_2024.json")
+JSON_COMUNI = os.path.join(DIR_DATI, "comuni_addizionale_2026.json")
 
 
 # --- caricamento dati ----------------------------------------------------------------------------
@@ -86,13 +86,13 @@ def addizionale_regionale(imponibile_fiscale: float, chiave_regione: str) -> flo
     return applica_scaglioni(imponibile_fiscale, scaglioni)
 
 
-def addizionale_comunale(imponibile_fiscale: float, aliquota: float) -> float:
-    """Addizionale comunale IRPEF dovuta sull'imponibile fiscale.
-
-    L'aliquota e' quella media derivata dal dataset MEF 2024 (vedi scripts/build_data.py) e si
-    applica in modo piatto: e' una stima, non riproduce le soglie di esenzione ne' gli scaglioni
-    deliberati dai singoli comuni.
-    """
+def addizionale_comunale(imponibile_fiscale: float, comune: dict) -> float:
+    """Addizionale comunale applicando aliquota, scaglioni ed esenzione ufficiali disponibili."""
     if imponibile_fiscale <= 0:
         return 0.0
-    return imponibile_fiscale * aliquota
+    if imponibile_fiscale <= comune.get("esenzione", 0):
+        return 0.0
+    if comune["modalita"] == "scaglioni":
+        scaglioni = [(s["fino_a"], s["aliquota"]) for s in comune["scaglioni"]]
+        return applica_scaglioni(imponibile_fiscale, scaglioni)
+    return imponibile_fiscale * comune["aliquota"]

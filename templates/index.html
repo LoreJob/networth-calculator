@@ -3,147 +3,156 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Calcolatore RAL &rarr; Netto | Jet HR</title>
+  <title>Compensation Optimizer | Jet HR</title>
   <link rel="icon" href="/brand/JetHR%20Pictogram%20Dark.svg">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-
 <header class="intestazione">
   <img class="logo" id="logo" src="/brand/JetHR%20Logo%20Dark.svg" alt="Jet HR">
   <button type="button" id="tema" class="tema" aria-label="Cambia tema">Tema scuro</button>
 </header>
 
 <main class="contenuto">
-
   <section class="titolo">
-    <h1>Dalla RAL al netto in busta paga</h1>
-    <p>Simulazione della retribuzione netta annuale e mensile, con il dettaglio di ogni voce trattenuta.</p>
+    <span class="eyebrow">Cost saving · Compensation 2026</span>
+    <h1 id="titolo-vista">Più valore, a parità di costo aziendale</h1>
+    <p id="sottotitolo-vista">Confronta aumento salariale e benefit eleggibili, misura il valore generato e trova il mix più efficiente.</p>
   </section>
 
-  <div class="griglia">
+  <nav class="vista-switch" role="tablist" aria-label="Vista dei risultati">
+    <button type="button" id="tab-azienda" role="tab" aria-selected="true" aria-controls="vista-azienda" data-vista="azienda">Cost saving azienda</button>
+    <button type="button" id="tab-dipendente" role="tab" aria-selected="false" aria-controls="vista-dipendente" data-vista="dipendente">RAL → netto dipendente</button>
+  </nav>
 
-    <!-- ---------- form ---------- -->
-    <!-- novalidate: la validazione la fa app.js, cosi' i messaggi sono in linea con la pagina.
-         Lasciandola al browser, un valore fuori range bloccherebbe il submit prima che il
-         nostro handler possa spiegare all'utente cosa non va. -->
+  <div class="griglia griglia-app">
     <form class="scheda modulo" id="modulo" autocomplete="off" novalidate>
-      <div class="campo">
-        <label for="ral">RAL (retribuzione annua lorda)</label>
-        <div class="input-valuta">
-          <span aria-hidden="true">&euro;</span>
-          <!-- step="any": con uno step fisso il browser rifiuterebbe in silenzio i valori non
-               allineati (con step=500 e min=1, 35000 risulta invalido e il submit non parte). -->
-          <input type="number" id="ral" name="ral" min="{{ ral_minima }}" step="any"
-                 inputmode="numeric" value="35000" data-minima="{{ ral_minima }}" required>
+      <div class="gruppo-form">
+        <h2>Budget aziendale</h2>
+        <div class="campo">
+          <label for="budget">Budget aggiuntivo annuo</label>
+          <div class="input-valuta"><span>€</span><input type="number" id="budget" min="1" value="5000" required></div>
+          <p class="nota-campo">Costo massimo che l'azienda vuole investire sul dipendente.</p>
         </div>
-        <p class="nota-campo">Da {{ "{:,.0f}".format(ral_minima).replace(",", ".") }}&nbsp;&euro; in su:
-           sotto questa soglia il trattamento integrativo semplificato supera l&rsquo;imposta dovuta
-           e il risultato non avrebbe senso.</p>
       </div>
 
-      <div class="campo">
-        <label for="comune">Comune di residenza fiscale</label>
-        <!-- Autocomplete costruito a mano: con quasi 8.000 comuni un <select> nativo
-             sarebbe inutilizzabile. La lista arriva da /api/comuni e il filtro e' locale. -->
-        <div class="autocomplete">
-          <input type="text" id="comune" placeholder="Inizia a digitare, es. Milano"
-                 role="combobox" aria-expanded="false" aria-autocomplete="list"
-                 aria-controls="suggerimenti" required>
-          <ul class="suggerimenti" id="suggerimenti" role="listbox" hidden></ul>
+      <div class="gruppo-form">
+        <h2>Profilo retributivo</h2>
+        <div class="campo"><label for="ral">RAL attuale</label><div class="input-valuta"><span>€</span><input type="number" id="ral" min="{{ ral_minima }}" value="35000" data-minima="{{ ral_minima }}" required></div></div>
+        <div class="campo">
+          <label for="comune">Comune di residenza fiscale</label>
+          <div class="autocomplete"><input type="text" id="comune" placeholder="Inizia a digitare, es. Milano" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggerimenti" required><ul class="suggerimenti" id="suggerimenti" role="listbox" hidden></ul></div>
+          <p class="derivato" id="derivato">Determina le addizionali locali.</p>
         </div>
-        <p class="derivato" id="derivato">La regione si compila da sola in base al comune scelto.</p>
+        <div class="campo"><label for="mensilita">Mensilità</label><select id="mensilita">{% for m in mensilita_ammesse %}<option value="{{ m }}" {% if m == mensilita_default %}selected{% endif %}>{{ m }} mensilità</option>{% endfor %}</select></div>
+        <p class="nota-campo nota-automatica">Detrazioni da lavoro, cuneo fiscale e trattamento integrativo vengono applicati automaticamente.</p>
       </div>
 
-      <div class="campo">
-        <label for="mensilita">Mensilit&agrave;</label>
-        <select id="mensilita">
-          {% for m in mensilita_ammesse %}
-          <option value="{{ m }}" {% if m == mensilita_default %}selected{% endif %}>{{ m }} mensilit&agrave;</option>
-          {% endfor %}
-        </select>
+      <div class="gruppo-form">
+        <h2>Benefit attuali</h2>
+        <div class="campo"><label for="fringe-usati">Fringe benefit attuali annui</label><div class="input-valuta"><span>€</span><input type="number" id="fringe-usati" min="0" value="0"></div><p class="nota-campo">Valore già riconosciuto nel periodo fiscale.</p></div>
+        <div class="campo"><label for="buono-pasto">Buono pasto elettronico attuale</label><div class="input-valuta"><span>€</span><input type="number" id="buono-pasto" min="0" max="10" value="0" step="0.01"></div></div>
+        <div class="campo"><label for="welfare-attuale">Welfare aziendale attuale annuo</label><div class="input-valuta"><span>€</span><input type="number" id="welfare-attuale" min="0" value="0"></div></div>
+        <p class="nota-campo">Questi importi entrano nel costo e nel valore della situazione attuale.</p>
       </div>
 
-      <button type="submit" class="calcola" id="calcola">
-        <img src="/brand/JetHR%20Pictogram%20White.svg" alt="" aria-hidden="true" class="pittogramma">
-        Calcola il netto
-      </button>
+      <div class="gruppo-form">
+        <h2>Opportunità nuovi benefit</h2>
+        <label class="check"><input type="checkbox" id="figli"><span>Ha figli fiscalmente a carico</span></label>
+        <div class="campo"><label for="spese-welfare">Ulteriori spese familiari rimborsabili</label><div class="input-valuta"><span>€</span><input type="number" id="spese-welfare" min="0" value="0"></div><p class="nota-campo">Istruzione, mensa, centri estivi o assistenza a familiari non già coperte.</p></div>
+      </div>
 
+      <details class="ambiente">
+        <summary>Ambiente aziendale</summary>
+        <p class="nota-campo">Scenario standard modificabile. Le aliquote reali dipendono dall'inquadramento aziendale.</p>
+        <div class="campo"><label for="ccnl">Scenario</label><input type="text" id="ccnl" value="Impiegato · tempo indeterminato" disabled></div>
+        <div class="due-colonne">
+          <div class="campo"><label for="aliquota-datore">Contributi datore</label><div class="input-percentuale"><input type="number" id="aliquota-datore" value="{{ aliquota_datore * 100 }}" min="0" max="100" step="0.01"><span>%</span></div></div>
+          <div class="campo"><label for="aliquota-inail">INAIL stimato</label><div class="input-percentuale"><input type="number" id="aliquota-inail" value="{{ aliquota_inail * 100 }}" min="0" max="20" step="0.01"><span>%</span></div></div>
+        </div>
+        <div class="campo"><label for="giorni">Giorni con buono pasto</label><input type="number" id="giorni" min="0" max="366" value="220"></div>
+      </details>
+
+      <button type="submit" class="calcola" id="calcola"><img src="/brand/JetHR%20Pictogram%20White.svg" alt="" class="pittogramma"><span id="azione-calcola">Ottimizza il budget</span></button>
       <p class="errore" id="errore" role="alert" hidden></p>
     </form>
 
-    <!-- ---------- risultati ---------- -->
     <div class="risultati" id="risultati" hidden>
+      <div class="pannello-vista" id="vista-azienda" role="tabpanel" aria-labelledby="tab-azienda">
+        <section class="scheda raccomandazione">
+          <span class="badge">Strategia consigliata</span>
+          <h2 id="titolo-raccomandazione">—</h2>
+          <p id="nota-raccomandazione"></p>
+          <div class="metriche"><div><span>Valore generato</span><strong id="valore-generato">—</strong></div><div><span>Costo evitato*</span><strong id="costo-evitato">—</strong></div><div><span>Efficienza budget</span><strong id="efficienza">—</strong></div></div>
+          <p class="nota-risparmio" id="nota-risparmio"></p>
+        </section>
 
-      <section class="scheda evidenza">
-        <div class="numero-grande">
-          <span class="etichetta">Netto annuo</span>
-          <strong id="netto-annuo">&mdash;</strong>
-        </div>
-        <div class="numero-grande">
-          <span class="etichetta">Netto mensile <em id="etichetta-mensilita"></em></span>
-          <strong id="netto-mensile">&mdash;</strong>
-        </div>
-      </section>
+        <section class="scheda costo-azienda-card">
+          <div class="testa-grafico"><h2>Composizione del costo attuale</h2><div><span>Costo diretto annuo</span><strong id="costo-totale-grafico">—</strong></div></div>
+          <div class="costo-stack" id="costo-stack" role="group" aria-label="Composizione del costo aziendale"></div>
+          <div class="legenda-costo" id="legenda-costo"></div>
+          <p class="nota-tabella">Costo diretto stimato: RAL, contributi datore, INAIL e TFR. Non include costi amministrativi o incentivi.</p>
+        </section>
 
-      <section class="scheda">
-        <h2>Dalla RAL al netto</h2>
-        <!-- Waterfall disegnato con div proporzionali: nessuna libreria, nessuna CDN. -->
-        <div class="waterfall" id="waterfall"></div>
-      </section>
+        <section class="scheda">
+          <h2>Confronto a parità di budget</h2>
+          <div class="tabella-wrap"><table class="confronto"><thead><tr><th>Strategia</th><th>Costo</th><th>Netto cash</th><th>Benefit</th><th>Valore totale</th><th>Efficienza</th></tr></thead><tbody id="scenari"></tbody></table></div>
+          <p class="nota-tabella">Il valore benefit è vincolato all'uso indicato e non equivale a liquidità libera.</p>
+        </section>
 
-      <section class="scheda tfr">
-        <h2>TFR maturato nell&rsquo;anno</h2>
-        <strong id="tfr">&mdash;</strong>
-        <p>Accantonamento, <b>non incluso nel netto percepito</b>: viene liquidato alla cessazione
-           del rapporto o destinato a un fondo pensione.</p>
-      </section>
+        <section class="scheda" id="allocazione-card"><h2>Allocazione consigliata</h2><div id="allocazione" class="allocazione"></div></section>
 
-      <section class="scheda dettaglio">
-        <h2>Dettaglio delle voci</h2>
-        <dl id="dettaglio"></dl>
-      </section>
+        <section class="scheda confronto-costi-card">
+          <div class="testa-confronto-costi">
+            <div><h2>Situazione attuale vs dopo il budget</h2><p>Come cambia la composizione del costo aziendale con la strategia consigliata.</p></div>
+            <div class="incremento-costo"><span>Aumento del costo</span><strong id="incremento-costo-percentuale">—</strong><em id="incremento-costo-euro">—</em></div>
+          </div>
+          <div class="grafico-verticale" id="grafico-confronto-costi" role="group" aria-label="Confronto del costo aziendale prima e dopo il budget">
+            <div class="colonna-costo"><strong id="totale-costo-attuale">—</strong><div class="area-barra-verticale"><div class="barra-costo-verticale" id="barra-costo-attuale"></div></div><span>Situazione attuale</span></div>
+            <div class="colonna-costo"><strong id="totale-costo-dopo">—</strong><div class="area-barra-verticale"><div class="barra-costo-verticale" id="barra-costo-dopo"></div></div><span>Dopo il budget</span></div>
+          </div>
+          <div class="legenda-costo legenda-confronto" id="legenda-confronto-costi"></div>
+        </section>
+      </div>
 
+      <div class="pannello-vista" id="vista-dipendente" role="tabpanel" aria-labelledby="tab-dipendente" hidden>
+        <section class="scheda evidenza evidenza-dipendente">
+          <div class="numero-grande"><span class="etichetta">Netto annuo</span><strong id="dipendente-netto-annuo">—</strong></div>
+          <div class="numero-grande"><span class="etichetta">Netto mensile <em id="dipendente-mensilita"></em></span><strong id="dipendente-netto-mensile">—</strong></div>
+          <div class="numero-grande incremento-mensile"><span class="etichetta">Aumento netto mensile <em>benefit esclusi</em></span><strong id="dipendente-aumento-mensile">—</strong></div>
+        </section>
+        <section class="scheda"><h2>Come viene distribuita la RAL</h2><div class="waterfall" id="waterfall-dipendente"></div></section>
+        <section class="scheda tfr"><h2>TFR maturato nell'anno</h2><strong id="dipendente-tfr">—</strong><p>Accantonamento incluso nel costo aziendale, ma non nel netto percepito nell'anno.</p></section>
+        <section class="scheda dettaglio"><h2>Dettaglio fiscale del dipendente</h2><dl id="dettaglio-dipendente"></dl><p class="nota-fonte" id="fonte-comunale"></p></section>
+        <section class="scheda confronto-costi-card">
+          <div class="testa-confronto-costi">
+            <div><h2>Situazione attuale vs dopo il budget</h2><p>Come cambiano trattenute, netto cash e benefit con la strategia consigliata.</p></div>
+            <div class="incremento-costo incremento-valore"><span>Aumento del valore</span><strong id="incremento-dipendente-percentuale">—</strong><em id="incremento-dipendente-euro">—</em></div>
+          </div>
+          <div class="grafico-verticale" id="grafico-confronto-dipendente" role="group" aria-label="Confronto per il dipendente prima e dopo il budget">
+            <div class="colonna-costo"><strong id="totale-dipendente-attuale">—</strong><div class="area-barra-verticale"><div class="barra-costo-verticale" id="barra-dipendente-attuale"></div></div><span>Situazione attuale</span></div>
+            <div class="colonna-costo"><strong id="totale-dipendente-dopo">—</strong><div class="area-barra-verticale"><div class="barra-costo-verticale" id="barra-dipendente-dopo"></div></div><span>Dopo la strategia</span></div>
+          </div>
+          <div class="legenda-costo legenda-confronto" id="legenda-confronto-dipendente"></div>
+          <p class="nota-tabella">Il totale sopra ogni barra è il flusso distribuito tra netto, contributi, imposte e benefit. L'aumento del valore considera soltanto netto cash e benefit.</p>
+        </section>
+      </div>
     </div>
   </div>
 
-  <!-- ---------- ipotesi ---------- -->
   <details class="scheda ipotesi">
-    <summary>Ipotesi di calcolo</summary>
+    <summary>Regole, ipotesi e limiti</summary>
     <ul>
-      <li>Lavoratore dipendente a tempo indeterminato, <b>nessun carico familiare</b>: le aliquote
-          e le detrazioni agevolate che diverse regioni riservano a chi ha figli o familiari
-          disabili a carico non vengono applicate.</li>
-      <li>Anno intero lavorato, nessuna variazione contrattuale in corso d&rsquo;anno. Per lo stesso
-          motivo la RAL minima simulabile e&rsquo; {{ "{:,.0f}".format(ral_minima).replace(",", ".") }}&nbsp;&euro;:
-          sotto quella soglia il netto reale dipende da part-time e mesi lavorati, che qui non
-          sono modellati.</li>
-      <li>Reddito da lavoro dipendente come unica fonte di reddito.</li>
-      <li>Contributi INPS al 9,19% su tutta la RAL: nessun massimale contributivo superato e
-          nessuna aliquota aggiuntiva sulla quota eccedente la prima fascia pensionabile.</li>
-      <li>Nessun fringe benefit, straordinario, premio di risultato o welfare aziendale.</li>
-      <li>Comune di residenza fiscale scelto liberamente tra i 7.817 presenti nel dataset MEF 2024;
-          la regione per l&rsquo;addizionale regionale <b>si deriva dal comune</b>, quindi i due
-          livelli non possono essere incoerenti tra loro.</li>
-      <li>80 comuni sono esclusi dalla selezione perch&eacute; il dataset MEF non riporta
-          l&rsquo;addizionale comunale dovuta e l&rsquo;aliquota non e&rsquo; derivabile.</li>
-      <li>Addizionali regionale e comunale calcolate sullo stesso anno, mentre in busta paga sono
-          trattenute a saldo e in acconto nell&rsquo;anno successivo.</li>
-      <li>Cuneo fiscale strutturale 2026 (quota esente e detrazione aggiuntiva per la fascia
-          20.000&ndash;32.000 euro) <b>non implementato</b>: nella realt&agrave; alza il netto in
-          quella fascia.</li>
-      <li>Aliquota comunale derivata indirettamente dai dati 2024 (addizionale dovuta divisa per
-          reddito imponibile addizionale), non letta da delibera: appiattisce soglie di esenzione
-          e scaglioni comunali in un unico valore medio.</li>
+      <li>Strumento decisionale per il cost saving: confronta costi diretti e valore generato, non sostituisce un cedolino.</li>
+      <li>Regole fiscali 2026; addizionale comunale da fonte MEF 2026 con fallback dichiarato all'ultima delibera ufficiale disponibile.</li>
+      <li>Fringe benefit: plafond complessivo di 1.000 €, elevato a 2.000 € con figli fiscalmente a carico.</li>
+      <li>Buoni pasto elettronici: esenzione fino a 10 € per giornata.</li>
+      <li>Il welfare familiare viene considerato solo entro le spese eleggibili dichiarate e presuppone un piano conforme all'art. 51 TUIR.</li>
+      <li>Contributi datore e INAIL sono parametri dell'ambiente aziendale; verificare il profilo con il consulente del lavoro.</li>
     </ul>
   </details>
-
-  <p class="disclaimer">
-    Simulazione semplificata a fini dimostrativi, non sostituisce un cedolino reale.
-  </p>
-
+  <p class="disclaimer">Simulazione annuale a supporto di decisioni HR e Finance · anno fiscale 2026</p>
 </main>
-
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

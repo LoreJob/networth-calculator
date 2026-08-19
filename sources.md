@@ -1,41 +1,39 @@
-# Fonti
+# Fonti normative e dati
 
-## Normativa fiscale
+Fonti primarie usate dal modello, consultate per l'anno fiscale 2026.
 
-| Voce | Fonte | Link |
-|---|---|---|
-| Scaglioni e aliquote IRPEF 2026 (23% / 33% / 43%) | Agenzia delle Entrate &ndash; IRPEF, aliquote e scaglioni | https://www.agenziaentrate.gov.it/portale/aliquote-e-calcolo-dell-irpef |
-| Detrazione per redditi da lavoro dipendente, art. 13 co. 1 e 1-bis TUIR | Agenzia delle Entrate &ndash; detrazioni per tipologia di reddito | https://www.agenziaentrate.gov.it/portale/detrazioni-per-tipologia-di-reddito |
-| Testo dell'art. 13 TUIR | D.P.R. 917/1986, art. 13 | https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.del.presidente.della.repubblica:1986-12-22;917 |
-| Trattamento integrativo (ex bonus Renzi), 1.200 euro con phase-out 15.000&ndash;28.000 | D.L. 3/2020 convertito in L. 21/2020, art. 1 | https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legge:2020-02-05;3 |
-| Aliquota contributiva IVS a carico del dipendente, 9,19% | INPS &ndash; aliquote contributive lavoratori dipendenti settore privato | https://www.inps.it/it/it/dettaglio-scheda.schede-servizio-strumento.schede-strumenti.aliquote-contributive-lavoratori-dipendenti.html |
-| Quota annua di TFR pari alla retribuzione divisa per 13,5 | Codice civile, art. 2120 | https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:regio.decreto:1942-03-16;262~art2120 |
-| Legge di bilancio 2026 (impianto IRPEF e misure sul cuneo) | L. 199/2025 | https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2025;199 |
+| Regola | Fonte ufficiale |
+|---|---|
+| IRPEF 23% / 33% / 43% | [Legge 30 dicembre 2025 n. 199, art. 1 co. 3](https://www.normattiva.it/eli/stato/LEGGE/2025/12/30/199/CONSOLIDATED) |
+| Somma esente e detrazione aggiuntiva sul cuneo | [Legge 30 dicembre 2024 n. 207, art. 1 co. 4-9](https://www.normattiva.it/eli/id/2024/12/31/24G00229/ORIGINAL) |
+| Detrazione lavoro dipendente | [DPR 917/1986, art. 13](https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.del.presidente.della.repubblica:1986-12-22;917) |
+| Trattamento integrativo | [DL 5 febbraio 2020 n. 3, art. 1](https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legge:2020-02-05;3) |
+| Reddito dipendente e welfare | [DPR 917/1986, art. 51](https://www.normattiva.it/uri-res/N2Ls?urn%3Anir%3Astato%3Alegge%3A1986%3B917~art51=) |
+| Fringe benefit 2025-2027 | [Agenzia delle Entrate, Quadro RC](https://infoprecompilata.agenziaentrate.gov.it/portale/web/guest/quadro-rc) |
+| Buono pasto elettronico fino a 10 euro dal 2026 | [Legge 199/2025, art. 1 co. 14](https://www.normattiva.it/eli/stato/LEGGE/2025/12/30/199/CONSOLIDATED) |
+| TFR, quota annua / 13,5 | [Codice civile, art. 2120](https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:regio.decreto:1942-03-16;262~art2120) |
+| Addizionali regionali | [Dipartimento delle Finanze, open data](https://www1.finanze.gov.it/finanze/analisi_stat/public/index.php?search_class%5B0%5D=cCOMUNE&opendata=yes) |
+| Addizionali comunali 2026 | [Dipartimento delle Finanze, elenchi generali](https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/tabella.htm) |
+| Regola comunale di Milano | [Comune di Milano, addizionale comunale IRPEF](https://www.comune.milano.it/aree-tematiche/tributi/addizionale-comunale-irpef) |
 
-## Dataset
+## Assunzioni che non derivano da una singola aliquota normativa
 
-| File | Fonte | Link |
-|---|---|---|
-| `data/addreg2026.csv` | MEF &ndash; Dipartimento delle Finanze, addizionale regionale all'IRPEF, anno 2026 | https://www1.finanze.gov.it/finanze/analisi_stat/public/index.php?search_class%5B0%5D=cCOMUNE&opendata=yes |
-| `data/Redditi_e_principali_variabili_IRPEF_su_base_comunale_CSV_2024.csv` | MEF &ndash; Dipartimento delle Finanze, redditi e principali variabili IRPEF su base comunale, anno d'imposta 2024 | https://www1.finanze.gov.it/finanze/pagina_dichiarazioni/public/dichiarazioni.php |
+Il default del 30% per i contributi datoriali e lo 0,4% per INAIL sono parametri di scenario, non
+aliquote dichiarate valide per tutte le aziende. Sono visibili e modificabili nella UI e tramite
+variabili d'ambiente. Una simulazione reale deve usare i valori del profilo contributivo aziendale.
 
-Entrambi i CSV sono versionati insieme ai JSON che ne derivano: senza i file di partenza
-l'aliquota comunale derivata e le 80 esclusioni non sarebbero verificabili e
-`scripts/build_data.py` non sarebbe rieseguibile. Per rigenerare i JSON:
-`python scripts/build_data.py`.
+L'aliquota INPS del dipendente e' fissata al 9,19% per il profilo standard del prototipo. Massimale,
+contributo aggiuntivo dell'1% e casistiche previdenziali diverse restano fuori dall'MVP.
 
-## Come le fonti entrano nel codice
+## Provenienza dei dati comunali
 
-- `calc/irpef.py` &rarr; scaglioni IRPEF 2026
-- `calc/detrazioni.py` &rarr; art. 13 co. 1 e 1-bis TUIR
-- `calc/inps.py` &rarr; aliquota INPS 9,19%
-- `calc/trattamento_integrativo.py` &rarr; D.L. 3/2020
-- `calc/tfr.py` &rarr; art. 2120 c.c.
-- `calc/addizionali.py` + `scripts/build_data.py` &rarr; i due dataset MEF
+Il normalizzatore conserva per ogni comune:
 
-## Nota sull'addizionale comunale
+- `fonte_anno`: anno dell'elenco MEF effettivamente utilizzato;
+- `stato=ufficiale`: regola strutturata 2026;
+- `stato=fallback_2025`: il 2026 riporta ancora `0*`;
+- `stato=specificita_non_modellate`: delibera con condizioni personali non rappresentabili;
+- `stato=stima_aggregata`: fallback residuale ai dati dichiarativi aggregati 2024.
 
-Il dataset comunale MEF **non contiene l'aliquota deliberata dai comuni**: contiene gli importi
-aggregati dichiarati. L'aliquota usata dall'app e' derivata come rapporto tra
-`Addizionale comunale dovuta` e `Reddito imponibile addizionale`, quindi e' una stima media
-dell'anno d'imposta 2024 e non una fonte normativa. Il limite e' descritto nel README.
+Questa informazione fa parte della risposta API e viene mostrata nella UI: una stima non viene mai
+presentata come una delibera ufficiale.

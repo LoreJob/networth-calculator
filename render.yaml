@@ -12,3 +12,7 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.13.4"
+      - key: DEFAULT_EMPLOYER_CONTRIBUTION_RATE
+        value: "0.30"
+      - key: DEFAULT_INAIL_RATE
+        value: "0.004"

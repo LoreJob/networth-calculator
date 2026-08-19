@@ -6,23 +6,16 @@ testabili una per una; qui si definisce solo l'ordine e la forma del risultato.
 
 from __future__ import annotations
 
-from calc import addizionali, detrazioni, inps, irpef, tfr, trattamento_integrativo
+from calc import addizionali, cuneo, detrazioni, inps, irpef, tfr, trattamento_integrativo
 
 MENSILITA_AMMESSE = (12, 13, 14)
 MENSILITA_DEFAULT = 13
 
 # RAL minima simulabile.
 #
-# Il trattamento integrativo e' implementato come importo forfettario (1.200 euro pieni fino a
-# 15.000 euro di imponibile), mentre la norma lo subordina alla capienza delle detrazioni. Su RAL
-# basse le detrazioni azzerano gia' l'IRPEF, quindi i 1.200 euro si sommano a un'imposta che e'
-# gia' zero e il "netto" finisce sopra la RAL: a 3.000 euro di RAL il modello restituirebbe 3.871.
-#
-# La soglia non e' scelta a occhio: e' il punto oltre il quale il netto torna inferiore alla RAL
-# anche nel caso peggiore, cioe' un comune senza addizionale comunale in una regione con
-# addizionale regionale minima (crossover misurato a circa 10.120 euro). Sotto la soglia il
-# calcolo viene rifiutato invece di restituire un numero privo di senso.
-RAL_MINIMA = 11_000.0
+# Limite di prodotto, non fiscale: evita proiezioni annuali prive di significato per rapporti
+# marginali. Il trattamento integrativo usa ora la verifica di capienza prevista dalla norma.
+RAL_MINIMA = 1_000.0
 
 
 def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) -> dict:
@@ -49,8 +42,7 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
         # Separatore delle migliaia all'italiana: il formato di default e' quello inglese.
         soglia = f"{RAL_MINIMA:,.0f}".replace(",", ".")
         raise ValueError(
-            f"Sotto {soglia} euro di RAL la simulazione non e' attendibile: "
-            "il trattamento integrativo semplificato supererebbe l'imposta dovuta"
+            f"La RAL minima simulabile e' {soglia} euro"
         )
     if mensilita not in MENSILITA_AMMESSE:
         raise ValueError(f"Mensilita' non ammessa: {mensilita}")
@@ -64,20 +56,31 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
     contributi = inps.contributi_inps(imponibile_previdenziale)
     imponibile_fiscale = ral - contributi
 
-    # 4-6. IRPEF nazionale
+    # 4-6. IRPEF nazionale e misure strutturali sul cuneo
     irpef_lorda = irpef.irpef_lorda(imponibile_fiscale)
     detrazione = detrazioni.detrazione_lavoro_dipendente(imponibile_fiscale)
-    irpef_netta = max(0.0, irpef_lorda - detrazione)
+    detrazione_cuneo = cuneo.detrazione_aggiuntiva(imponibile_fiscale)
+    # Le quote effettivamente usate vengono conservate separatamente per spiegare il passaggio
+    # dall'IRPEF lorda alla netta senza mostrare detrazioni incapienti come denaro ricevuto.
+    detrazione_applicata = min(irpef_lorda, detrazione)
+    residuo_irpef = irpef_lorda - detrazione_applicata
+    detrazione_cuneo_applicata = min(residuo_irpef, detrazione_cuneo)
+    irpef_netta = residuo_irpef - detrazione_cuneo_applicata
 
     # 7-8. addizionali locali
     add_regionale = addizionali.addizionale_regionale(imponibile_fiscale, comune["regione_key"])
-    add_comunale = addizionali.addizionale_comunale(imponibile_fiscale, comune["aliquota"])
+    add_comunale = addizionali.addizionale_comunale(imponibile_fiscale, comune)
 
     # 9. somma erogata in busta paga, non un'imposta
-    integrativo = trattamento_integrativo.trattamento_integrativo(imponibile_fiscale)
+    integrativo = trattamento_integrativo.trattamento_integrativo(
+        imponibile_fiscale, irpef_lorda, detrazione
+    )
+    somma_cuneo = cuneo.somma_esente(imponibile_fiscale)
 
     # 10-11. netto
-    netto_annuo = imponibile_fiscale - irpef_netta - add_regionale - add_comunale + integrativo
+    netto_annuo = (
+        imponibile_fiscale - irpef_netta - add_regionale - add_comunale + integrativo + somma_cuneo
+    )
     netto_mensile = netto_annuo / mensilita
 
     # 12. accantonamento, fuori dal netto
@@ -99,7 +102,7 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
         },
         "aliquote": {
             "inps": inps.ALIQUOTA_INPS_DIPENDENTE,
-            "comunale": comune["aliquota"],
+            "comunale": comune.get("aliquota"),
             "regionale_modalita": modalita_regionale,
         },
         "dettaglio": {
@@ -108,24 +111,38 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
             "imponibile_fiscale": round(imponibile_fiscale, 2),
             "irpef_lorda": round(irpef_lorda, 2),
             "detrazione_lavoro_dipendente": round(detrazione, 2),
+            "detrazione_lavoro_applicata": round(detrazione_applicata, 2),
+            "detrazione_cuneo": round(detrazione_cuneo, 2),
+            "detrazione_cuneo_applicata": round(detrazione_cuneo_applicata, 2),
             "irpef_netta": round(irpef_netta, 2),
             "addizionale_regionale": round(add_regionale, 2),
             "addizionale_comunale": round(add_comunale, 2),
             "trattamento_integrativo": round(integrativo, 2),
+            "somma_cuneo": round(somma_cuneo, 2),
         },
         "risultato": {
             "netto_annuo": round(netto_annuo, 2),
             "netto_mensile": round(netto_mensile, 2),
             "tfr_annuo": round(tfr_annuo, 2),
         },
+        "fonti_dati": {
+            "anno_fiscale": 2026,
+            "comunale_anno": comune["fonte_anno"],
+            "comunale_stato": comune["stato"],
+            "comunale_esenzione": comune.get("esenzione", 0),
+            "comunale_modalita": comune["modalita"],
+        },
         # Voci gia' pronte per il waterfall: il frontend le disegna senza ricalcolare nulla.
         "waterfall": [
             {"etichetta": "RAL", "importo": round(ral, 2), "tipo": "inizio"},
             {"etichetta": "Contributi INPS", "importo": round(-contributi, 2), "tipo": "sottrazione"},
-            {"etichetta": "IRPEF netta", "importo": round(-irpef_netta, 2), "tipo": "sottrazione"},
+            {"etichetta": "IRPEF lorda", "importo": round(-irpef_lorda, 2), "tipo": "sottrazione"},
+            {"etichetta": "Detrazione lavoro", "importo": round(detrazione_applicata, 2), "tipo": "aggiunta"},
+            {"etichetta": "Detrazione cuneo", "importo": round(detrazione_cuneo_applicata, 2), "tipo": "aggiunta"},
             {"etichetta": "Addizionale regionale", "importo": round(-add_regionale, 2), "tipo": "sottrazione"},
             {"etichetta": "Addizionale comunale", "importo": round(-add_comunale, 2), "tipo": "sottrazione"},
             {"etichetta": "Trattamento integrativo", "importo": round(integrativo, 2), "tipo": "aggiunta"},
+            {"etichetta": "Somma esente cuneo", "importo": round(somma_cuneo, 2), "tipo": "aggiunta"},
             {"etichetta": "Netto annuo", "importo": round(netto_annuo, 2), "tipo": "fine"},
         ],
     }

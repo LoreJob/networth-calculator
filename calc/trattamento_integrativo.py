@@ -7,27 +7,30 @@ SOGLIA_IMPORTO_PIENO = 15_000.0
 SOGLIA_AZZERAMENTO = 28_000.0
 
 
-def trattamento_integrativo(imponibile_fiscale: float) -> float:
+def trattamento_integrativo(
+    imponibile_fiscale: float,
+    irpef_lorda: float | None = None,
+    detrazioni_rilevanti: float | None = None,
+) -> float:
     """Trattamento integrativo annuo spettante.
 
-      R <= 15.000            -> 1.200 euro pieni
-      15.000 < R <= 28.000   -> phase-out lineare da 1.200 a 0
+      R <= 15.000            -> 1.200 euro se l'imposta supera la detrazione da lavoro - 75 euro
+      15.000 < R <= 28.000   -> differenza positiva tra detrazioni rilevanti e imposta, max 1.200
       R > 28.000             -> nulla
 
     Si SOMMA al netto: non e' un'imposta ma una somma erogata in busta paga.
 
-    SEMPLIFICAZIONE: il phase-out reale e' subordinato alla capienza delle detrazioni
-    (l'importo spetta nei limiti della differenza tra detrazioni spettanti e imposta lorda).
-    Qui usiamo l'interpolazione lineare sul reddito, che e' l'approssimazione comunemente
-    adottata dai simulatori.
+    Il chiamante passa imposta e detrazioni effettive. I valori opzionali mantengono la funzione
+    utilizzabile isolatamente, ma la pipeline usa sempre il controllo di capienza.
     """
     reddito = imponibile_fiscale
 
     if reddito <= 0:
         return 0.0
+    if irpef_lorda is None or detrazioni_rilevanti is None:
+        return 0.0
     if reddito <= SOGLIA_IMPORTO_PIENO:
-        return IMPORTO_PIENO
+        return IMPORTO_PIENO if irpef_lorda > max(0.0, detrazioni_rilevanti - 75.0) else 0.0
     if reddito <= SOGLIA_AZZERAMENTO:
-        quota_residua = (SOGLIA_AZZERAMENTO - reddito) / (SOGLIA_AZZERAMENTO - SOGLIA_IMPORTO_PIENO)
-        return IMPORTO_PIENO * quota_residua
+        return min(IMPORTO_PIENO, max(0.0, detrazioni_rilevanti - irpef_lorda))
     return 0.0

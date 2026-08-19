@@ -9,10 +9,14 @@ from __future__ import annotations
 import os
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
+from dotenv import load_dotenv
 
 from calc import addizionali
+from calc.costo_azienda import ALIQUOTA_CONTRIBUTI_DATORE_DEFAULT, ALIQUOTA_INAIL_DEFAULT
+from calc.ottimizzatore import confronta
 from calc.pipeline import MENSILITA_AMMESSE, MENSILITA_DEFAULT, RAL_MINIMA, calcola
 
+load_dotenv()
 app = Flask(__name__)
 
 RADICE = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +26,13 @@ RADICE = os.path.dirname(os.path.abspath(__file__))
 RAL_MASSIMA = 10_000_000
 
 
+def env_float(nome: str, default: float) -> float:
+    try:
+        return float(os.getenv(nome, default))
+    except ValueError:
+        return default
+
+
 @app.get("/")
 def home():
     return render_template(
@@ -29,6 +40,8 @@ def home():
         mensilita_ammesse=MENSILITA_AMMESSE,
         mensilita_default=MENSILITA_DEFAULT,
         ral_minima=int(RAL_MINIMA),
+        aliquota_datore=env_float("DEFAULT_EMPLOYER_CONTRIBUTION_RATE", ALIQUOTA_CONTRIBUTI_DATORE_DEFAULT),
+        aliquota_inail=env_float("DEFAULT_INAIL_RATE", ALIQUOTA_INAIL_DEFAULT),
     )
 
 
@@ -87,7 +100,54 @@ def api_calcola():
     try:
         return jsonify(calcola(ral, codice_comune, mensilita))
     except KeyError:
-        return jsonify({"errore": "Comune non presente nel dataset MEF 2024"}), 400
+        return jsonify({"errore": "Comune non presente nel dataset delle addizionali"}), 400
+    except ValueError as errore:
+        return jsonify({"errore": str(errore)}), 400
+
+
+@app.post("/api/ottimizza")
+def api_ottimizza():
+    """Confronta le leve di compensation a parita' di budget aziendale."""
+    dati = request.get_json(silent=True) or {}
+
+    def valore(nome: str, default=None) -> float:
+        try:
+            return float(dati.get(nome, default))
+        except (TypeError, ValueError):
+            raise ValueError(f"Valore non valido: {nome}") from None
+
+    try:
+        ral = valore("ral")
+        if not RAL_MINIMA <= ral <= RAL_MASSIMA:
+            raise ValueError("RAL fuori dall'intervallo simulabile")
+        mensilita = int(dati.get("mensilita", MENSILITA_DEFAULT))
+        if mensilita not in MENSILITA_AMMESSE:
+            raise ValueError("Mensilita' non valide")
+        codice_comune = str(dati.get("comune") or "").strip()
+        if not codice_comune:
+            raise ValueError("Seleziona un comune")
+
+        return jsonify(confronta(
+            ral=ral,
+            codice_comune=codice_comune,
+            mensilita=mensilita,
+            budget=valore("budget"),
+            figli_a_carico=bool(dati.get("figli_a_carico", False)),
+            fringe_usati=valore("fringe_usati", 0),
+            buono_pasto_attuale=valore("buono_pasto_attuale", 0),
+            welfare_attuale=valore("welfare_attuale", 0),
+            giorni_lavorativi=int(dati.get("giorni_lavorativi", 220)),
+            spese_welfare=valore("spese_welfare", 0),
+            aliquota_datore=valore(
+                "aliquota_datore",
+                env_float("DEFAULT_EMPLOYER_CONTRIBUTION_RATE", ALIQUOTA_CONTRIBUTI_DATORE_DEFAULT),
+            ),
+            aliquota_inail=valore(
+                "aliquota_inail", env_float("DEFAULT_INAIL_RATE", ALIQUOTA_INAIL_DEFAULT)
+            ),
+        ))
+    except KeyError:
+        return jsonify({"errore": "Comune non presente nel dataset"}), 400
     except ValueError as errore:
         return jsonify({"errore": str(errore)}), 400
 

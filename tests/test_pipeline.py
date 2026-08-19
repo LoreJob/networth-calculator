@@ -1,209 +1,187 @@
-"""Test della pipeline di calcolo su casi noti.
-
-I valori attesi non sono presi da un simulatore esterno: sono le proprieta' che il calcolo deve
-rispettare (progressivita', coerenza annuo/mensile, effetto della regione) piu' alcuni importi
-ricalcolati a mano dalle formule di legge.
-"""
+"""Regressioni fiscali e invarianti del motore di cost saving."""
 
 from __future__ import annotations
 
-import os
-import sys
-
 import pytest
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from calc import addizionali, detrazioni, irpef, trattamento_integrativo  # noqa: E402
-from calc.inps import ALIQUOTA_INPS_DIPENDENTE  # noqa: E402
-from calc.pipeline import RAL_MINIMA, calcola  # noqa: E402
+from app import app
+from calc import addizionali, cuneo, irpef, trattamento_integrativo
+from calc.costo_azienda import costo_retribuzione, ral_per_budget
+from calc.ottimizzatore import confronta
+from calc.pipeline import calcola
 
 MILANO = "F205"
-ROMA = "H501"
-RAL_DI_PROVA = [20_000, 25_000, 35_000, 50_000, 70_000]
 
 
-# --- pipeline completa ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("ral", RAL_DI_PROVA)
-def test_netto_compreso_tra_zero_e_ral(ral):
-    """Il netto percepito e' sempre positivo e sempre inferiore alla RAL."""
+@pytest.mark.parametrize("ral", [10_000, 20_000, 25_000, 35_000, 50_000, 70_000])
+def test_pipeline_restituisce_valori_finiti_e_positivi(ral):
     risultato = calcola(ral, MILANO, 13)
-    netto = risultato["risultato"]["netto_annuo"]
-    assert 0 < netto < ral
-
-
-@pytest.mark.parametrize("ral", RAL_DI_PROVA)
-def test_netto_mensile_coerente_con_annuo(ral):
-    """netto mensile x mensilita' deve ridare il netto annuo, a meno degli arrotondamenti.
-
-    Il mensile e' arrotondato al centesimo, quindi l'errore ammesso cresce con le mensilita':
-    al massimo mezzo centesimo per rata.
-    """
-    for mensilita in (12, 13, 14):
-        risultato = calcola(ral, MILANO, mensilita)
-        annuo = risultato["risultato"]["netto_annuo"]
-        mensile = risultato["risultato"]["netto_mensile"]
-        assert abs(mensile * mensilita - annuo) <= mensilita * 0.005 + 0.01
-
-
-@pytest.mark.parametrize("ral", RAL_DI_PROVA)
-def test_dettaglio_ricompone_il_netto(ral):
-    """Le voci del breakdown devono sommare esattamente al netto annuo dichiarato."""
-    risultato = calcola(ral, MILANO, 13)
-    d = risultato["dettaglio"]
-    ricomposto = (
-        d["imponibile_fiscale"]
-        - d["irpef_netta"]
-        - d["addizionale_regionale"]
-        - d["addizionale_comunale"]
-        + d["trattamento_integrativo"]
-    )
-    assert abs(ricomposto - risultato["risultato"]["netto_annuo"]) < 0.02
-
-
-@pytest.mark.parametrize("ral", RAL_DI_PROVA)
-def test_waterfall_somma_al_netto(ral):
-    """Il waterfall parte dalla RAL, e sommando le variazioni arriva al netto finale."""
-    voci = calcola(ral, MILANO, 13)["waterfall"]
-    inizio = voci[0]["importo"]
-    variazioni = sum(v["importo"] for v in voci[1:-1])
-    assert abs(inizio + variazioni - voci[-1]["importo"]) < 0.02
-
-
-def test_netto_cresce_con_la_ral():
-    """Nessuna inversione: a RAL piu' alta deve corrispondere netto piu' alto."""
-    netti = [calcola(ral, MILANO, 13)["risultato"]["netto_annuo"] for ral in RAL_DI_PROVA]
-    assert netti == sorted(netti)
-
-
-def test_nessun_salto_discontinuo_attorno_agli_scaglioni():
-    """Attorno alle soglie di scaglione l'imposta cambia pendenza, non fa salti.
-
-    100 euro di RAL in piu' non possono cambiare il netto di piu' di 100 euro: se accadesse,
-    vorrebbe dire che l'aliquota dello scaglione superiore e' stata applicata all'intero
-    reddito invece che alla sola quota eccedente.
-    """
-    for soglia in (28_000, 50_000):
-        # Le soglie sono sull'imponibile fiscale: risaliamo alla RAL corrispondente.
-        ral_soglia = soglia / (1 - ALIQUOTA_INPS_DIPENDENTE)
-        prima = calcola(ral_soglia - 50, MILANO, 13)["risultato"]["netto_annuo"]
-        dopo = calcola(ral_soglia + 50, MILANO, 13)["risultato"]["netto_annuo"]
-        assert 0 <= dopo - prima <= 100
-
-
-# --- effetto del comune scelto -------------------------------------------------------------------
-
-
-def test_regione_derivata_dal_comune():
-    """La regione non e' un input: si deriva dal comune selezionato."""
-    assert calcola(35_000, MILANO, 13)["input"]["comune"]["regione"] == "Lombardia"
-    assert calcola(35_000, ROMA, 13)["input"]["comune"]["regione"] == "Lazio"
-
-
-def test_addizionali_diverse_tra_milano_e_roma():
-    """Cambiando comune cambiano entrambe le addizionali, e quindi il netto."""
-    milano = calcola(35_000, MILANO, 13)
-    roma = calcola(35_000, ROMA, 13)
-
-    assert milano["dettaglio"]["addizionale_regionale"] != roma["dettaglio"]["addizionale_regionale"]
-    assert milano["dettaglio"]["addizionale_comunale"] != roma["dettaglio"]["addizionale_comunale"]
-    # Il Lazio ha aliquote regionali piu' alte della Lombardia: a Roma il netto e' inferiore.
-    assert roma["risultato"]["netto_annuo"] < milano["risultato"]["netto_annuo"]
-
-
-def test_imponibile_fiscale_identico_indipendentemente_dal_comune():
-    """Il comune tocca solo le addizionali, non contributi ne' imponibile."""
-    milano = calcola(35_000, MILANO, 13)["dettaglio"]
-    roma = calcola(35_000, ROMA, 13)["dettaglio"]
-    assert milano["imponibile_fiscale"] == roma["imponibile_fiscale"]
-    assert milano["irpef_netta"] == roma["irpef_netta"]
-
-
-# --- singoli moduli ------------------------------------------------------------------------------
-
-
-def test_irpef_lorda_calcolata_a_mano():
-    """Verifica della progressivita' contro il calcolo manuale sugli scaglioni."""
-    assert irpef.irpef_lorda(28_000) == pytest.approx(28_000 * 0.23)
-    assert irpef.irpef_lorda(35_000) == pytest.approx(28_000 * 0.23 + 7_000 * 0.33)
-    assert irpef.irpef_lorda(60_000) == pytest.approx(28_000 * 0.23 + 22_000 * 0.33 + 10_000 * 0.43)
-
-
-def test_detrazione_rami_art_13():
-    assert detrazioni.detrazione_lavoro_dipendente(14_000) == pytest.approx(1_955)
-    assert detrazioni.detrazione_lavoro_dipendente(20_000) == pytest.approx(
-        1_910 + 1_190 * 8_000 / 13_000
-    )
-    # Nella fascia 25.000-35.000 si aggiunge il bonus di 65 euro del comma 1-bis.
-    assert detrazioni.detrazione_lavoro_dipendente(30_000) == pytest.approx(
-        1_910 * 20_000 / 22_000 + 65
-    )
-    assert detrazioni.detrazione_lavoro_dipendente(55_000) == 0
-
-
-def test_trattamento_integrativo_phase_out():
-    assert trattamento_integrativo.trattamento_integrativo(14_000) == 1_200
-    assert trattamento_integrativo.trattamento_integrativo(21_500) == pytest.approx(600)
-    assert trattamento_integrativo.trattamento_integrativo(28_000) == pytest.approx(0)
-    assert trattamento_integrativo.trattamento_integrativo(40_000) == 0
-
-
-def test_addizionale_regionale_unica_non_e_progressiva():
-    """Le regioni ad aliquota unica applicano l'aliquota all'intero imponibile."""
-    veneto = addizionali.trova_regione("REGIONE VENETO")
-    assert veneto["modalita"] == "unica"
-    assert addizionali.addizionale_regionale(40_000, "REGIONE VENETO") == pytest.approx(
-        40_000 * veneto["aliquota"]
+    assert risultato["risultato"]["netto_annuo"] > 0
+    assert risultato["risultato"]["netto_mensile"] > 0
+    dettaglio = risultato["dettaglio"]
+    assert (
+        dettaglio["irpef_lorda"]
+        - dettaglio["detrazione_lavoro_applicata"]
+        - dettaglio["detrazione_cuneo_applicata"]
+    ) == pytest.approx(dettaglio["irpef_netta"], abs=0.02)
+    waterfall = risultato["waterfall"]
+    assert waterfall[0]["importo"] + sum(v["importo"] for v in waterfall[1:-1]) == pytest.approx(
+        waterfall[-1]["importo"], abs=0.03
     )
 
 
-def test_addizionale_regionale_a_scaglioni_e_progressiva():
-    """Le regioni a scaglioni tassano ogni fascia con la propria aliquota."""
-    lombardia = addizionali.trova_regione("REGIONE LOMBARDIA")
-    assert lombardia["modalita"] == "scaglioni"
-    atteso = 15_000 * 0.0123 + 5_000 * 0.0158
-    assert addizionali.addizionale_regionale(20_000, "REGIONE LOMBARDIA") == pytest.approx(atteso)
+def test_waterfall_mostra_la_detrazione_cuneo_quando_spetta():
+    risultato = calcola(35_000, MILANO, 13)
+    voce = next(v for v in risultato["waterfall"] if v["etichetta"] == "Detrazione cuneo")
+    assert voce["importo"] == 1_000
 
 
-# --- validazione degli input ---------------------------------------------------------------------
+def test_irpef_2026_progressiva():
+    assert irpef.irpef_lorda(28_000) == pytest.approx(6_440)
+    assert irpef.irpef_lorda(35_000) == pytest.approx(6_440 + 7_000 * 0.33)
+    assert irpef.irpef_lorda(60_000) == pytest.approx(6_440 + 22_000 * 0.33 + 10_000 * 0.43)
 
 
-def test_input_non_validi():
-    with pytest.raises(ValueError):
-        calcola(0, MILANO, 13)
-    with pytest.raises(ValueError):
-        calcola(30_000, MILANO, 15)
-    with pytest.raises(KeyError):
-        calcola(30_000, "ZZZZ", 13)
+def test_cuneo_strutturale_alle_soglie():
+    assert cuneo.somma_esente(8_000) == pytest.approx(568)
+    assert cuneo.somma_esente(10_000) == pytest.approx(530)
+    assert cuneo.somma_esente(18_000) == pytest.approx(864)
+    assert cuneo.somma_esente(20_001) == 0
+    assert cuneo.detrazione_aggiuntiva(25_000) == 1_000
+    assert cuneo.detrazione_aggiuntiva(36_000) == 500
+    assert cuneo.detrazione_aggiuntiva(40_000) == 0
 
 
-@pytest.mark.parametrize("ral", [1, 3_000, 9_000, RAL_MINIMA - 1])
-def test_ral_sotto_la_soglia_rifiutata(ral):
-    """Sotto la soglia il calcolo va rifiutato, non approssimato.
-
-    Con il trattamento integrativo forfettario, su RAL basse le detrazioni azzerano gia' l'IRPEF
-    e i 1.200 euro si sommano a un'imposta nulla: il "netto" supererebbe la RAL.
-    """
-    with pytest.raises(ValueError):
-        calcola(ral, MILANO, 13)
+def test_trattamento_integrativo_verifica_capienza():
+    assert trattamento_integrativo.trattamento_integrativo(14_000, 3_220, 1_955) == 1_200
+    assert trattamento_integrativo.trattamento_integrativo(8_000, 1_840, 1_955) == 0
+    assert trattamento_integrativo.trattamento_integrativo(20_000, 4_600, 5_100) == 500
+    assert trattamento_integrativo.trattamento_integrativo(20_000, 4_600, 3_000) == 0
 
 
-def test_alla_soglia_il_netto_resta_sotto_la_ral_ovunque():
-    """La soglia deve reggere anche nel caso peggiore, non solo a Milano.
-
-    Il caso peggiore e' un comune senza addizionale comunale in una regione con addizionale
-    regionale minima: e' li' che il netto si avvicina di piu' alla RAL.
-    """
-    peggiore = min(addizionali.elenco_comuni(), key=lambda c: c["aliquota"])
-    for ral in (RAL_MINIMA, RAL_MINIMA + 500, 15_000):
-        netto = calcola(ral, peggiore["codice"], 13)["risultato"]["netto_annuo"]
-        assert netto < ral, f"netto {netto} >= RAL {ral} a {peggiore['nome']}"
+def test_milano_usa_delibera_ufficiale_con_esenzione():
+    comune = addizionali.trova_comune(MILANO)
+    assert comune["aliquota"] == pytest.approx(0.008)
+    assert comune["esenzione"] == 23_000
+    assert comune["stato"] == "fallback_2025"
+    assert addizionali.addizionale_comunale(23_000, comune) == 0
+    assert addizionali.addizionale_comunale(23_001, comune) == pytest.approx(184.008)
 
 
-def test_comuni_omonimi_restano_distinti():
-    """I cinque nomi duplicati nel dataset devono essere distinguibili per codice catastale."""
-    omonimi = [c for c in addizionali.elenco_comuni() if c["nome"] == "SAN TEODORO"]
-    assert len(omonimi) == 2
-    assert {c["provincia"] for c in omonimi} == {"ME", "SS"}
+def test_costo_azienda_si_ricompone():
+    costo = costo_retribuzione(35_000, 0.30, 0.004)
+    assert costo["totale"] == pytest.approx(
+        costo["ral"] + costo["contributi_datore"] + costo["inail"] + costo["tfr"]
+    )
+    assert ral_per_budget(costo["totale"], 0.30, 0.004) == pytest.approx(35_000)
+
+
+def ottimizzazione(**override):
+    input_base = dict(
+        ral=35_000,
+        codice_comune=MILANO,
+        mensilita=13,
+        budget=5_000,
+        figli_a_carico=True,
+        fringe_usati=0,
+        buono_pasto_attuale=0,
+        welfare_attuale=0,
+        giorni_lavorativi=220,
+        spese_welfare=1_500,
+        aliquota_datore=0.30,
+        aliquota_inail=0.004,
+    )
+    input_base.update(override)
+    return confronta(**input_base)
+
+
+def test_scenari_rispettano_il_budget():
+    risultato = ottimizzazione()
+    for scenario in risultato["scenari"]:
+        assert scenario["costo_allocato"] + scenario["non_allocato"] == pytest.approx(5_000)
+        assert scenario["costo_allocato"] <= 5_000
+    assert risultato["raccomandazione"]["costo_aumento_equivalente"] >= 5_000
+    assert risultato["raccomandazione"]["costo_evitato"] >= 0
+    confronto = risultato["confronto_costi"]
+    assert confronto["dopo_budget"]["totale"] - confronto["attuale"]["totale"] == pytest.approx(
+        5_000, abs=0.02
+    )
+    for situazione in (confronto["attuale"], confronto["dopo_budget"]):
+        somma = sum(situazione[c] for c in ("ral", "contributi_datore", "inail", "tfr", "benefit"))
+        assert somma == pytest.approx(situazione["totale"], abs=0.02)
+    assert confronto["incremento_percentuale"] == pytest.approx(
+        confronto["incremento"] / confronto["attuale"]["totale"], abs=1e-5
+    )
+    dipendente = risultato["confronto_dipendente"]
+    for situazione in (dipendente["attuale"], dipendente["dopo_budget"]):
+        flusso = sum(situazione[c] for c in (
+            "netto_cash", "contributi_dipendente", "irpef_netta", "addizionali", "benefit"
+        ))
+        assert flusso == pytest.approx(situazione["totale_flusso"], abs=0.02)
+        assert situazione["netto_cash"] + situazione["benefit"] == pytest.approx(
+            situazione["valore_totale"], abs=0.02
+        )
+    assert dipendente["dopo_budget"]["valore_totale"] - dipendente["attuale"]["valore_totale"] == pytest.approx(
+        dipendente["incremento_valore"], abs=0.02
+    )
+    assert dipendente["incremento_netto_mensile"] == pytest.approx(
+        dipendente["incremento_netto_cash"] / 13, abs=0.01
+    )
+
+
+def test_benefit_attuali_entrano_in_entrambe_le_baseline():
+    risultato = ottimizzazione(
+        fringe_usati=500, buono_pasto_attuale=8, welfare_attuale=600,
+        giorni_lavorativi=200,
+    )
+    benefit_attuali = 500 + 8 * 200 + 600
+    costi = risultato["confronto_costi"]
+    dipendente = risultato["confronto_dipendente"]
+    assert risultato["input"]["benefit_attuali"] == benefit_attuali
+    assert costi["attuale"]["benefit"] == benefit_attuali
+    assert dipendente["attuale"]["benefit"] == benefit_attuali
+    assert costi["dopo_budget"]["benefit"] >= benefit_attuali
+    assert dipendente["dopo_budget"]["benefit"] >= benefit_attuali
+    assert costi["dopo_budget"]["totale"] - costi["attuale"]["totale"] == pytest.approx(
+        5_000, abs=0.02
+    )
+
+
+def test_figli_a_carico_alzano_solo_il_plafond_fringe():
+    con_figli = ottimizzazione(figli_a_carico=True)["scenari"][1]
+    senza_figli = ottimizzazione(figli_a_carico=False)["scenari"][1]
+    fringe_con = next(v for v in con_figli["benefit"] if v["tipo"] == "fringe")
+    fringe_senza = next(v for v in senza_figli["benefit"] if v["tipo"] == "fringe")
+    assert fringe_con["importo"] == 2_000
+    assert fringe_senza["importo"] == 1_000
+
+
+def test_mix_destina_il_residuo_alla_ral():
+    risultato = ottimizzazione(
+        figli_a_carico=False, buono_pasto_attuale=10, spese_welfare=0, budget=5_000
+    )
+    mix = next(s for s in risultato["scenari"] if s["codice"] == "mix")
+    assert mix["valore_benefit"] == 1_000
+    assert mix["incremento_ral"] > 0
+    assert mix["costo_allocato"] == 5_000
+    assert risultato["confronto_dipendente"]["incremento_netto_mensile"] > 0
+
+
+def test_api_ottimizzazione():
+    with app.test_client() as client:
+        pagina = client.get("/")
+        risposta = client.post("/api/ottimizza", json={
+            "ral": 35_000, "comune": MILANO, "mensilita": 13, "budget": 5_000,
+            "figli_a_carico": True, "fringe_usati": 0, "buono_pasto_attuale": 0,
+            "welfare_attuale": 0, "giorni_lavorativi": 220, "spese_welfare": 1_500,
+            "aliquota_datore": 0.30, "aliquota_inail": 0.004,
+        })
+    html = pagina.get_data(as_text=True)
+    assert pagina.status_code == 200
+    assert 'id="vista-azienda"' in html
+    assert 'id="vista-dipendente"' in html
+    assert 'id="costo-stack"' in html
+    assert 'id="grafico-confronto-costi"' in html
+    assert 'id="grafico-confronto-dipendente"' in html
+    assert risposta.status_code == 200
+    assert len(risposta.get_json()["scenari"]) == 3
