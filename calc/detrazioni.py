@@ -22,9 +22,8 @@ def detrazione_lavoro_dipendente(imponibile_fiscale: float) -> float:
     norma; il salto e' compensato nella pratica dal trattamento integrativo, che si azzera
     progressivamente proprio in quella fascia.
 
-    ASSUNZIONE: nessun carico familiare, quindi nessuna detrazione per coniuge o figli a carico;
-    reddito da lavoro dipendente come unica fonte di reddito, quindi la detrazione non va
-    rapportata ad altri redditi.
+    Le detrazioni per familiari sono calcolate separatamente in calc/familiari.py. Il reddito da
+    lavoro dipendente resta l'unica fonte di reddito modellata.
     """
     reddito = imponibile_fiscale
 

@@ -83,13 +83,18 @@ def _costo_aumento_per_netto(
     aliquota_datore: float,
     aliquota_inail: float,
     netto_attuale: float,
+    coniuge: dict | None,
+    figli: list[dict],
+    regime_fiscale: dict | None,
 ) -> float:
     """Costo aziendale necessario per generare lo stesso valore tramite sola RAL."""
     basso, alto = 0.0, max(1_000.0, target_netto * 3)
 
     def incremento(costo: float) -> float:
         delta = ral_per_budget(costo, aliquota_datore, aliquota_inail)
-        nuovo = calcola(ral + delta, codice_comune, mensilita)["risultato"]["netto_annuo"]
+        nuovo = calcola(
+            ral + delta, codice_comune, mensilita, coniuge, figli, regime_fiscale
+        )["risultato"]["netto_annuo"]
         return nuovo - netto_attuale
 
     while incremento(alto) < target_netto and alto < 10_000_000:
@@ -129,7 +134,9 @@ def confronta(
     codice_comune: str,
     mensilita: int,
     budget: float,
-    figli_a_carico: bool,
+    coniuge: dict | None,
+    figli: list[dict],
+    regime_fiscale: dict | None,
     fringe_usati: float,
     buono_pasto_attuale: float,
     welfare_attuale: float,
@@ -148,12 +155,15 @@ def confronta(
     if min(fringe_usati, buono_pasto_attuale, welfare_attuale, spese_welfare) < 0:
         raise ValueError("Gli importi dei benefit non possono essere negativi")
 
-    situazione = calcola(ral, codice_comune, mensilita)
+    situazione = calcola(ral, codice_comune, mensilita, coniuge, figli, regime_fiscale)
+    figli_a_carico = situazione["familiari"]["figli_a_carico"]
     costo = costo_retribuzione(ral, aliquota_datore, aliquota_inail)
     benefit_attuali = fringe_usati + buono_pasto_attuale * giorni_lavorativi + welfare_attuale
 
     incremento_ral_puro = ral_per_budget(budget, aliquota_datore, aliquota_inail)
-    nuovo_puro = calcola(ral + incremento_ral_puro, codice_comune, mensilita)
+    nuovo_puro = calcola(
+        ral + incremento_ral_puro, codice_comune, mensilita, coniuge, figli, regime_fiscale
+    )
     netto_puro = nuovo_puro["risultato"]["netto_annuo"] - situazione["risultato"]["netto_annuo"]
     aumento = _scenario(
         "aumento", "Solo aumento RAL", budget, incremento_ral_puro, netto_puro, []
@@ -168,7 +178,9 @@ def confronta(
     )
 
     incremento_ral_mix = ral_per_budget(residuo, aliquota_datore, aliquota_inail)
-    nuovo_mix = calcola(ral + incremento_ral_mix, codice_comune, mensilita)
+    nuovo_mix = calcola(
+        ral + incremento_ral_mix, codice_comune, mensilita, coniuge, figli, regime_fiscale
+    )
     netto_mix = nuovo_mix["risultato"]["netto_annuo"] - situazione["risultato"]["netto_annuo"]
     mix = _scenario("mix", "Mix ottimizzato", budget, incremento_ral_mix, netto_mix, benefit)
 
@@ -203,7 +215,7 @@ def confronta(
     incremento_netto_cash = dipendente_dopo["netto_cash"] - dipendente_attuale["netto_cash"]
     costo_equivalente = _costo_aumento_per_netto(
         migliore["valore_totale"], ral, codice_comune, mensilita, aliquota_datore,
-        aliquota_inail, situazione["risultato"]["netto_annuo"],
+        aliquota_inail, situazione["risultato"]["netto_annuo"], coniuge, figli, regime_fiscale,
     )
     if migliore["codice"] == "aumento":
         nota = "Non risultano plafond benefit utilizzabili: il budget viene convertito in aumento RAL."
@@ -217,6 +229,7 @@ def confronta(
         "input": {
             "budget": _r2(budget),
             "figli_a_carico": figli_a_carico,
+            "numero_figli_a_carico": situazione["familiari"]["numero_figli_a_carico"],
             "benefit_attuali": _r2(benefit_attuali),
             "aliquota_datore": aliquota_datore,
             "aliquota_inail": aliquota_inail,

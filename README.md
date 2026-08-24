@@ -6,7 +6,12 @@ budget aggiuntivo, confronta quanto valore generano:
 - un aumento di RAL;
 - fringe benefit e buoni pasto entro i plafond residui;
 - welfare familiare entro le spese eleggibili dichiarate;
+- nuovo regime fiscale agevolato per lavoratori impatriati dal 2024;
 - un mix che assegna ai benefit eleggibili la quota utilizzabile e investe il residuo in RAL.
+
+Il profilo familiare modella coniuge e figli a carico: le detrazioni personali vengono ricalcolate
+sia sulla RAL attuale sia su quella successiva all'aumento, mentre i figli fiscalmente a carico
+determinano automaticamente il plafond fringe applicabile.
 
 Il risultato separa sempre **netto cash**, **valore vincolato dei benefit** e **costo aziendale**.
 Non e' un portale self-service per il dipendente e non presenta un euro di welfare come un euro di
@@ -89,6 +94,8 @@ la raccomandazione e' valida solo se il dipendente utilizza davvero quelle prest
 
 - IRPEF 23% / 33% / 43%;
 - detrazione da lavoro dipendente;
+- detrazione per coniuge a carico, rapportata ai mesi;
+- detrazione per figli a carico, con eta', mesi e quota 0% / 50% / 100%;
 - somma esente e detrazione aggiuntiva del cuneo strutturale;
 - trattamento integrativo con controllo di capienza per gli input modellati;
 - waterfall esplicito da IRPEF lorda a netta, con detrazioni e bonus fiscali automatici;
@@ -126,6 +133,8 @@ calc/pipeline.py               RAL -> netto 2026
 calc/costo_azienda.py          costo diretto e RAL acquistabile
 calc/ottimizzatore.py          eleggibilita', scenari e raccomandazione
 calc/cuneo.py                  misure strutturali sul cuneo
+calc/familiari.py              coniuge, figli, eta' e detrazioni personali
+calc/regimi_agevolati.py       nuovo regime lavoratori impatriati
 calc/addizionali.py            regole regionali e comunali
 scripts/build_addizionali_comunali.py
 templates/index.html           UI decisionale HR/Finance
@@ -136,17 +145,109 @@ tests/                         formule, soglie, budget e API
 Il frontend non contiene formule fiscali: invia gli input a `POST /api/ottimizza` e visualizza il
 risultato. `POST /api/calcola` resta disponibile come endpoint di baseline.
 
-## Limiti dichiarati
+## Assunzioni e limiti dichiarati
 
-- profilo standard: dipendente privato, impiegato, tempo indeterminato, anno intero;
-- contributi datoriali e INAIL configurabili ma non derivati automaticamente dal CSC aziendale;
-- nessun incentivo contributivo o agevolazione all'assunzione;
-- nessun reddito diverso da quello di lavoro dipendente;
-- familiari usati per l'eleggibilita' dei benefit, non ancora per tutte le detrazioni personali;
-- welfare considerato valido solo in presenza dei requisiti dell'art. 51 TUIR;
-- premio di risultato escluso dall'MVP: richiede accordo depositato e verifica degli obiettivi;
-- costi del provider welfare e altri costi amministrativi esclusi;
-- simulazione annuale, non cedolino mensile.
+Il risultato e' una **stima decisionale annuale**, non un cedolino, un parere fiscale o una raccomandazione pronta per essere applicata. Le semplificazioni seguenti sono intenzionali e fanno parte del perimetro del prototipo.
 
-Prima di usare una raccomandazione reale, Finance deve inserire le aliquote aziendali effettive e
-Payroll/consulente del lavoro deve validare eleggibilita' e trattamento delle singole voci.
+### Profilo del dipendente
+
+- dipendente del settore privato, impiegato, a tempo indeterminato e occupato per l'intero anno;
+- RAL ammessa tra 1.000 e 10.000.000 euro per limiti di prodotto; gli estremi non implicano che il modello sia attendibile per rapporti marginali o redditi molto elevati;
+- RAL come unica retribuzione imponibile e unico reddito: sono esclusi altri datori di lavoro, redditi personali, premi, straordinari, variabile, arretrati e periodi non lavorati;
+- un solo comune di residenza fiscale per l'anno; non sono gestiti trasferimenti di residenza;
+- 12, 13 o 14 mensilita' cambiano solo la divisione del netto annuo: non viene simulato il singolo cedolino, il calendario dei pagamenti o l'arrotondamento mensile;
+- coniuge non legalmente ed effettivamente separato e figli sono gli unici familiari modellati. Ascendenti conviventi e altri familiari restano esclusi;
+- reddito complessivo del dipendente assunto uguale al solo reddito prodotto dalla RAL. Reddito, mesi a carico e quota spettante dei familiari sono dichiarati dall'utente e non verificati da CU;
+- eta' dei figli calcolata dalla data di nascita nel solo anno 2026: la detrazione decorre dal mese del 21° compleanno e termina il mese prima del 30°, salvo disabilita' accertata;
+- nessun codice fiscale o documento familiare viene acquisito o validato;
+- regime impatriati dal 2024 modellato nella versione base: 50% del reddito di lavoro imponibile, limite annuo agevolabile di 600.000 euro e durata di 5 periodi d'imposta;
+- il regime si applica solo se l'utente attesta che Payroll o il consulente ha verificato i requisiti. Il tool non verifica residenza estera, qualificazione, continuita' dell'attivita' o documenti;
+- rientro dei cervelli per docenti/ricercatori e' escluso perché non coerente con il profilo standard del prototipo;
+- maggiorazione impatriati con figlio minore, regimi transitori e vecchia agevolazione territoriale del Mezzogiorno sono esclusi;
+- il regime riduce solo l'imponibile fiscale: RAL, contributi previdenziali, TFR e costo aziendale restano invariati. La quota esente e' riaggiunta alle soglie delle misure che richiedono il reddito per intero;
+
+### Imposte e contributi del dipendente
+
+- anno fiscale 2026 e regole note/versionate nel repository; il modello non si aggiorna
+  automaticamente quando cambia la normativa;
+- imponibile previdenziale assunto uguale alla RAL e contributi dipendente applicati con aliquota
+  unica del 9,19%; non sono gestiti l'1% aggiuntivo, massimali, fondi speciali, esoneri o aliquote
+  dipendenti da settore e qualifica;
+- in regime ordinario l'imponibile fiscale e' RAL meno contributi dipendente; nei regimi agevolati la percentuale si applica al reddito di lavoro gia' al netto dei contributi obbligatori;
+- IRPEF, detrazioni da lavoro e famiglia e cuneo sono calcolati sul solo reddito modellato. Sono
+  escluse detrazioni per spese, altre deduzioni personali e altri redditi;
+- trattamento integrativo verificato rispetto alle detrazioni da lavoro e famiglia disponibili nel
+  modello, non rispetto all'insieme completo degli oneri rilevanti previsto nei casi reali;
+- addizionale regionale calcolata con le aliquote ordinarie: eventuali riduzioni legate a figli,
+  disabilita' o altre condizioni regionali non sono applicate;
+- addizionale comunale presa dalla fonte MEF 2026; dove la regola non e' disponibile viene usato il
+  fallback ufficiale 2025 e, in ultima istanza, la stima 2024 indicata nei dati. Non sono simulati
+  acconto, saldo e relative tempistiche in busta paga;
+- gli importi sono calcolati su base annuale e arrotondati solo in uscita.
+
+### Costo aziendale e TFR
+
+- contributi datore e premio INAIL sono aliquote configurabili, non valori ricavati da CSC,
+  ATECO, CCNL, qualifica, dimensione aziendale, posizione assicurativa o storico infortuni;
+- sono esclusi fondi contrattuali, enti bilaterali, assicurazioni, payroll, formazione, assenze,
+  costi amministrativi e altri costi indiretti del lavoro;
+- nessun incentivo contributivo, sgravio, agevolazione all'assunzione o credito d'imposta;
+- TFR stimato come RAL / 13,5, assumendo tutta la RAL utile. Non sono considerati contributo al
+  Fondo di garanzia, rivalutazione del fondo, anticipi o destinazione alla previdenza complementare;
+- fiscalita' d'impresa, deducibilita', IVA e trattamento contabile dei benefit sono esclusi.
+
+### Fringe benefit
+
+- il campo fringe attuale e' trattato come totale annuo gia' utilizzato. Il sistema non recupera o
+  verifica valori da CU, precedenti datori, auto, prestiti, utenze, affitto, mutuo o altri benefit;
+- il plafond e' 1.000 euro, elevato a 2.000 con figli fiscalmente a carico, e il motore assegna solo
+  la capienza residua;
+- non viene simulato il superamento del plafond: nella realta' il superamento rende imponibile
+  l'intero ammontare, con effetti su IRPEF e contributi di dipendente e datore;
+- tutte le tipologie sono valorizzate al nominale. Sono escluse le regole specifiche per auto in
+  uso promiscuo, prestiti, fabbricati, stock option e altri compensi in natura;
+- un euro di fringe e' assunto pari a un euro di costo aziendale e a un euro di valore ricevuto:
+  non sono inclusi commissioni del provider, sconti, IVA indetraibile, costi operativi o valore
+  percepito dal dipendente;
+- il sistema non verifica documentazione, titolarita' della spesa o divieto di doppia agevolazione
+  per rimborsi di utenze, affitto e interessi sul mutuo.
+
+### Buoni pasto e welfare
+
+- sono modellati solo buoni pasto elettronici, fino a 10 euro per ogni giornata dichiarata;
+- il valore attuale annuo dei buoni e' stimato come valore giornaliero per numero di giorni: non
+  sono verificati presenze, assenze, trasferte o dati effettivi del provider;
+- welfare attuale e ulteriori spese familiari sono importi dichiarati dall'utente. Il motore assume
+  che le nuove spese siano reali, documentate, non gia' rimborsate e ammesse dall'art. 51 TUIR;
+- non viene verificato che il piano sia rivolto alla generalita' o a categorie omogenee di
+  dipendenti, ne' sono applicati tutti i limiti specifici delle singole prestazioni;
+- welfare e buoni pasto sono valorizzati al nominale, senza commissioni, IVA, costi amministrativi
+  o probabilita' di utilizzo.
+
+### Ottimizzatore e interpretazione dei risultati
+
+- il budget e' annuale e riferito a un singolo dipendente; non sono gestiti popolazione aziendale,
+  equita' interna, salary band, costo pluriennale o rinnovi contrattuali;
+- l'allocazione segue un ordine fisso: fringe, buoni pasto, welfare e infine RAL. Non esplora tutte
+  le combinazioni possibili e non considera preferenze del dipendente o policy aziendali;
+- la strategia consigliata massimizza il valore **nominale** ricevuto. Liquidita', vincoli d'uso,
+  gradimento, tasso di utilizzo, rischio fiscale e complessita' operativa non hanno un punteggio;
+- il "costo evitato" e' il costo teorico necessario per generare lo stesso valore nominale con
+  sola RAL: non rappresenta un risparmio contabilizzato o garantito;
+- sono esclusi premio di risultato, previdenza complementare, assistenza sanitaria, auto
+  aziendale, flexible benefits complessi, partecipazioni e altre leve di compensation;
+- la baseline somma RAL, costi diretti e benefit dichiarati; accuratezza e completezza degli input
+  restano responsabilita' dell'utilizzatore.
+- non viene ricostruito l'anno precedente: requisiti, eta', redditi e detrazioni sono proiettati
+  esclusivamente per il 2026.
+
+### Dati necessari prima di un utilizzo reale
+
+Finance dovrebbe inserire aliquote e costi aziendali effettivi. Payroll o il consulente del lavoro
+dovrebbe inoltre validare almeno:
+
+- posizione previdenziale, assicurativa e contrattuale del dipendente;
+- redditi, giorni lavorati, detrazioni e situazione familiare rilevanti;
+- fringe complessivi dell'anno, inclusi precedenti datori, e loro valore fiscale;
+- capienza, documentazione e requisiti del piano welfare;
+- costo del provider, IVA, commissioni e trattamento contributivo/fiscale di ogni voce.

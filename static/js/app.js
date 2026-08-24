@@ -14,7 +14,12 @@
   var el = {
     modulo: $("modulo"), budget: $("budget"), ral: $("ral"), comune: $("comune"),
     suggerimenti: $("suggerimenti"), derivato: $("derivato"), mensilita: $("mensilita"),
-    figli: $("figli"), fringeUsati: $("fringe-usati"), buonoPasto: $("buono-pasto"),
+    coniugePresente: $("coniuge-presente"), campiConiuge: $("campi-coniuge"),
+    redditoConiuge: $("reddito-coniuge"), mesiConiuge: $("mesi-coniuge"),
+    regimeFiscale: $("regime-fiscale"), campiRegime: $("campi-regime"),
+    annoRegime: $("anno-regime"), requisitiRegime: $("requisiti-regime"),
+    aggiungiFiglio: $("aggiungi-figlio"), figliLista: $("figli-lista"),
+    fringeUsati: $("fringe-usati"), buonoPasto: $("buono-pasto"),
     welfareAttuale: $("welfare-attuale"), speseWelfare: $("spese-welfare"),
     aliquotaDatore: $("aliquota-datore"),
     aliquotaInail: $("aliquota-inail"), giorni: $("giorni"), calcola: $("calcola"),
@@ -28,6 +33,7 @@
   var comuneScelto = null;
   var evidenziato = -1;
   var vistaAttiva = "azienda";
+  var contatoreFigli = 0;
 
   function posizionaTooltip(x, y) {
     var margine = 12;
@@ -172,6 +178,96 @@
 
   function numero(campo) { return Number(campo.value); }
 
+  function rinumeraFigli() {
+    el.figliLista.querySelectorAll(".figlio-card").forEach(function (card, indice) {
+      card.querySelector(".testa-figlio strong").textContent = "Figlio " + (indice + 1);
+    });
+  }
+
+  function aggiornaNotaFiglio(card) {
+    var data = card.querySelector(".figlio-data").value;
+    var nota = card.querySelector(".nota-figlio");
+    if (!data) {
+      nota.textContent = "Inserisci la data di nascita per determinare la detrazione 2026.";
+      return;
+    }
+    var parti = data.split("-").map(Number);
+    var anno = parti[0];
+    var mese = parti[1];
+    var etaFineAnno = 2026 - anno;
+    var disabile = card.querySelector(".figlio-disabile").checked;
+    var mesiDetrazione = 0;
+    for (var m = 1; m <= 12; m += 1) {
+      var indice = 2026 * 12 + m;
+      var mese21 = (anno + 21) * 12 + mese;
+      var mese30 = (anno + 30) * 12 + mese;
+      if (indice >= mese21 && (disabile || indice < mese30)) mesiDetrazione += 1;
+    }
+    var soglia = etaFineAnno <= 24 ? 4000 : 2840.51;
+    nota.textContent = mesiDetrazione > 0
+      ? mesiDetrazione + " mesi potenzialmente detraibili · soglia reddito " + euroPreciso.format(soglia)
+      : "Nessuna detrazione IRPEF per età · può rilevare per fringe e welfare entro " + euroPreciso.format(soglia);
+  }
+
+  function aggiungiFiglio() {
+    contatoreFigli += 1;
+    var card = document.createElement("div");
+    card.className = "figlio-card";
+    card.dataset.indice = String(contatoreFigli);
+    card.innerHTML =
+      '<div class="testa-figlio"><strong></strong><button type="button" class="rimuovi-figlio">Rimuovi</button></div>' +
+      '<div class="due-colonne">' +
+        '<div class="campo"><label>Data di nascita</label><input type="date" class="figlio-data" max="2026-12-31" required></div>' +
+        '<div class="campo"><label>Reddito annuo</label><div class="input-valuta"><span>€</span><input type="number" class="figlio-reddito" min="0" value="0"></div></div>' +
+      '</div>' +
+      '<div class="due-colonne">' +
+        '<div class="campo"><label>Mesi a carico</label><input type="number" class="figlio-mesi" min="0" max="12" value="12"></div>' +
+        '<div class="campo"><label>Quota detrazione</label><select class="figlio-quota"><option value="0.5">50%</option><option value="1">100%</option><option value="0">0%</option></select></div>' +
+      '</div>' +
+      '<label class="check"><input type="checkbox" class="figlio-disabile"><span>Disabilità accertata (L. 104/1992)</span></label>' +
+      '<p class="nota-campo nota-figlio"></p>';
+    el.figliLista.appendChild(card);
+    card.querySelector(".rimuovi-figlio").addEventListener("click", function () {
+      card.remove();
+      rinumeraFigli();
+    });
+    card.querySelector(".figlio-data").addEventListener("change", function () { aggiornaNotaFiglio(card); });
+    card.querySelector(".figlio-disabile").addEventListener("change", function () { aggiornaNotaFiglio(card); });
+    rinumeraFigli();
+    aggiornaNotaFiglio(card);
+  }
+
+  function raccogliFigli() {
+    return Array.from(el.figliLista.querySelectorAll(".figlio-card")).map(function (card, indice) {
+      var data = card.querySelector(".figlio-data").value;
+      if (!data) throw new Error("Inserisci la data di nascita del figlio " + (indice + 1) + ".");
+      return {
+        data_nascita: data,
+        reddito: numero(card.querySelector(".figlio-reddito")),
+        mesi_carico: numero(card.querySelector(".figlio-mesi")),
+        quota_detrazione: numero(card.querySelector(".figlio-quota")),
+        disabile: card.querySelector(".figlio-disabile").checked
+      };
+    });
+  }
+
+  el.coniugePresente.addEventListener("change", function () {
+    el.campiConiuge.hidden = !el.coniugePresente.checked;
+  });
+  el.aggiungiFiglio.addEventListener("click", aggiungiFiglio);
+
+  function aggiornaRegime() {
+    var tipo = el.regimeFiscale.value;
+    var agevolato = tipo !== "ordinario";
+    el.campiRegime.hidden = !agevolato;
+    if (!agevolato) return;
+    el.annoRegime.min = "2024";
+    if (numero(el.annoRegime) < Number(el.annoRegime.min)) el.annoRegime.value = el.annoRegime.min;
+    $("nota-regime").textContent = "Il 50% del reddito di lavoro, entro 600.000 €, concorre al reddito complessivo per 5 periodi d'imposta. La maggiore riduzione al 60% non è simulata.";
+  }
+  el.regimeFiscale.addEventListener("change", aggiornaRegime);
+  aggiornaRegime();
+
   el.modulo.addEventListener("submit", function (evento) {
     evento.preventDefault();
     el.errore.hidden = true;
@@ -179,9 +275,27 @@
     if (!(numero(el.budget) > 0)) return mostraErrore("Inserisci un budget aziendale maggiore di zero.");
     if (!(numero(el.ral) >= Number(el.ral.dataset.minima))) return mostraErrore("Inserisci una RAL valida.");
 
+    var figli;
+    try {
+      figli = raccogliFigli();
+    } catch (errore) {
+      return mostraErrore(errore.message);
+    }
+
     var payload = {
       budget: numero(el.budget), ral: numero(el.ral), comune: comuneScelto.codice,
-      mensilita: numero(el.mensilita), figli_a_carico: el.figli.checked,
+      mensilita: numero(el.mensilita),
+      coniuge: {
+        presente: el.coniugePresente.checked,
+        reddito: numero(el.redditoConiuge),
+        mesi_carico: numero(el.mesiConiuge)
+      },
+      figli: figli,
+      regime_fiscale: {
+        tipo: el.regimeFiscale.value,
+        anno_inizio: numero(el.annoRegime),
+        requisiti_attestati: el.requisitiRegime.checked
+      },
       fringe_usati: numero(el.fringeUsati), buono_pasto_attuale: numero(el.buonoPasto),
       welfare_attuale: numero(el.welfareAttuale), spese_welfare: numero(el.speseWelfare),
       aliquota_datore: numero(el.aliquotaDatore) / 100,
@@ -451,12 +565,16 @@
   function disegnaDettaglioDipendente(fiscale) {
     var d = fiscale.dettaglio;
     var fonte = fiscale.fonti_dati;
+    var regime = fiscale.regime_fiscale;
     var voci = [
       ["RAL", d.imponibile_previdenziale, "Retribuzione annua lorda"],
       ["Contributi INPS dipendente", -d.contributi_inps, null],
-      ["Imponibile fiscale", d.imponibile_fiscale, "RAL meno contributi"],
+      ["Quota esclusa dal reddito", d.quota_reddito_esente, regime.nome],
+      ["Imponibile fiscale", d.imponibile_fiscale, regime.tipo === "ordinario" ? "RAL meno contributi" : "Dopo regime agevolato e contributi"],
       ["IRPEF lorda", -d.irpef_lorda, "Scaglioni 23% / 33% / 43%"],
       ["Detrazione lavoro dipendente", d.detrazione_lavoro_applicata, "Quota utilizzata"],
+      ["Detrazione coniuge", d.detrazione_coniuge_applicata, "In base a reddito e mesi a carico"],
+      ["Detrazione figli", d.detrazione_figli_applicata, "In base a età, mesi e quota spettante"],
       ["Detrazione aggiuntiva cuneo", d.detrazione_cuneo_applicata, "Applicata automaticamente"],
       ["IRPEF netta", -d.irpef_netta, "Dopo le detrazioni"],
       ["Addizionale regionale", -d.addizionale_regionale, fiscale.input.comune.regione],

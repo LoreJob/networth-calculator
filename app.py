@@ -98,7 +98,14 @@ def api_calcola():
         return jsonify({"errore": "Seleziona un comune di residenza fiscale"}), 400
 
     try:
-        return jsonify(calcola(ral, codice_comune, mensilita))
+        return jsonify(calcola(
+            ral,
+            codice_comune,
+            mensilita,
+            dati.get("coniuge"),
+            dati.get("figli", []),
+            dati.get("regime_fiscale"),
+        ))
     except KeyError:
         return jsonify({"errore": "Comune non presente nel dataset delle addizionali"}), 400
     except ValueError as errore:
@@ -132,7 +139,9 @@ def api_ottimizza():
             codice_comune=codice_comune,
             mensilita=mensilita,
             budget=valore("budget"),
-            figli_a_carico=bool(dati.get("figli_a_carico", False)),
+            coniuge=dati.get("coniuge"),
+            figli=dati.get("figli", []),
+            regime_fiscale=dati.get("regime_fiscale"),
             fringe_usati=valore("fringe_usati", 0),
             buono_pasto_attuale=valore("buono_pasto_attuale", 0),
             welfare_attuale=valore("welfare_attuale", 0),

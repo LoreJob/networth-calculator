@@ -45,7 +45,42 @@
           <p class="derivato" id="derivato">Determina le addizionali locali.</p>
         </div>
         <div class="campo"><label for="mensilita">Mensilità</label><select id="mensilita">{% for m in mensilita_ammesse %}<option value="{{ m }}" {% if m == mensilita_default %}selected{% endif %}>{{ m }} mensilità</option>{% endfor %}</select></div>
-        <p class="nota-campo nota-automatica">Detrazioni da lavoro, cuneo fiscale e trattamento integrativo vengono applicati automaticamente.</p>
+        <p class="nota-campo nota-automatica">Si assume che la RAL sia l'unica fonte di reddito. Detrazioni e trattamento integrativo vengono applicati automaticamente.</p>
+      </div>
+
+      <div class="gruppo-form regime-agevolato">
+        <h2>Regime fiscale</h2>
+        <div class="campo">
+          <label for="regime-fiscale">Agevolazione applicata</label>
+          <select id="regime-fiscale">
+            <option value="ordinario">Regime ordinario</option>
+            <option value="impatriati_2024">Lavoratori impatriati dal 2024</option>
+          </select>
+        </div>
+        <div id="campi-regime" hidden>
+          <div class="campo"><label for="anno-regime">Anno di trasferimento / inizio beneficio</label><input type="number" id="anno-regime" min="2024" max="2026" value="2026"></div>
+          <p class="nota-campo" id="nota-regime"></p>
+          <label class="check"><input type="checkbox" id="requisiti-regime"><span>Payroll o consulente ha verificato i requisiti previsti dalla norma</span></label>
+        </div>
+        <p class="nota-campo">L'agevolazione aumenta il netto a parità di costo aziendale; non riduce RAL, contributi o TFR.</p>
+      </div>
+
+      <div class="gruppo-form situazione-familiare">
+        <h2>Situazione familiare</h2>
+        <label class="check"><input type="checkbox" id="coniuge-presente"><span>Coniuge non separato presente</span></label>
+        <div class="campi-coniuge" id="campi-coniuge" hidden>
+          <div class="due-colonne">
+            <div class="campo"><label for="reddito-coniuge">Reddito annuo coniuge</label><div class="input-valuta"><span>€</span><input type="number" id="reddito-coniuge" min="0" value="0"></div></div>
+            <div class="campo"><label for="mesi-coniuge">Mesi a carico</label><input type="number" id="mesi-coniuge" min="0" max="12" value="12"></div>
+          </div>
+          <p class="nota-campo">La detrazione spetta entro 2.840,51 € di reddito annuo del coniuge.</p>
+        </div>
+        <div class="testa-figli">
+          <div><h3>Figli</h3><p>Età e requisiti vengono valutati nell'anno fiscale 2026.</p></div>
+          <button type="button" class="aggiungi-figlio" id="aggiungi-figlio">+ Aggiungi figlio</button>
+        </div>
+        <div class="figli-lista" id="figli-lista"></div>
+        <p class="nota-campo">I figli sotto i 21 anni non generano detrazione IRPEF, ma possono aumentare il plafond fringe se fiscalmente a carico.</p>
       </div>
 
       <div class="gruppo-form">
@@ -58,7 +93,6 @@
 
       <div class="gruppo-form">
         <h2>Opportunità nuovi benefit</h2>
-        <label class="check"><input type="checkbox" id="figli"><span>Ha figli fiscalmente a carico</span></label>
         <div class="campo"><label for="spese-welfare">Ulteriori spese familiari rimborsabili</label><div class="input-valuta"><span>€</span><input type="number" id="spese-welfare" min="0" value="0"></div><p class="nota-campo">Istruzione, mensa, centri estivi o assistenza a familiari non già coperte.</p></div>
       </div>
 
@@ -146,6 +180,8 @@
       <li>Strumento decisionale per il cost saving: confronta costi diretti e valore generato, non sostituisce un cedolino.</li>
       <li>Regole fiscali 2026; addizionale comunale da fonte MEF 2026 con fallback dichiarato all'ultima delibera ufficiale disponibile.</li>
       <li>Fringe benefit: plafond complessivo di 1.000 €, elevato a 2.000 € con figli fiscalmente a carico.</li>
+      <li>Coniuge e figli incidono sulle detrazioni personali; per il dipendente si assume che la RAL sia l'unica fonte di reddito.</li>
+      <li>Il regime impatriati è applicato solo previa attestazione dei requisiti; maggiorazione per figli, vecchi regimi e agevolazione territoriale sono esclusi.</li>
       <li>Buoni pasto elettronici: esenzione fino a 10 € per giornata.</li>
       <li>Il welfare familiare viene considerato solo entro le spese eleggibili dichiarate e presuppone un piano conforme all'art. 51 TUIR.</li>
       <li>Contributi datore e INAIL sono parametri dell'ambiente aziendale; verificare il profilo con il consulente del lavoro.</li>

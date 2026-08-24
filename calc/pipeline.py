@@ -6,7 +6,10 @@ testabili una per una; qui si definisce solo l'ordine e la forma del risultato.
 
 from __future__ import annotations
 
-from calc import addizionali, cuneo, detrazioni, inps, irpef, tfr, trattamento_integrativo
+from calc import (
+    addizionali, cuneo, detrazioni, familiari, inps, irpef, regimi_agevolati, tfr,
+    trattamento_integrativo,
+)
 
 MENSILITA_AMMESSE = (12, 13, 14)
 MENSILITA_DEFAULT = 13
@@ -18,7 +21,14 @@ MENSILITA_DEFAULT = 13
 RAL_MINIMA = 1_000.0
 
 
-def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) -> dict:
+def calcola(
+    ral: float,
+    codice_comune: str,
+    mensilita: int = MENSILITA_DEFAULT,
+    coniuge: dict | None = None,
+    figli: list[dict] | None = None,
+    regime_fiscale: dict | None = None,
+) -> dict:
     """Proiezione del netto annuo e mensile a partire dalla RAL.
 
     Ordine dei passaggi:
@@ -26,7 +36,7 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
       2.  contributi INPS a carico del dipendente
       3.  imponibile fiscale = RAL - contributi INPS
       4.  IRPEF lorda progressiva sull'imponibile fiscale
-      5.  detrazione da lavoro dipendente (+ eventuale bonus comma 1-bis)
+      5.  detrazioni da lavoro, coniuge e figli a carico
       6.  IRPEF netta = max(0, lorda - detrazioni)
       7.  addizionale regionale, con regione derivata dal comune scelto
       8.  addizionale comunale
@@ -54,16 +64,30 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
     # 1-3. dalla RAL all'imponibile fiscale
     imponibile_previdenziale = ral
     contributi = inps.contributi_inps(imponibile_previdenziale)
-    imponibile_fiscale = ral - contributi
+    reddito_post_contributi = ral - contributi
+    regime = regimi_agevolati.applica(ral, contributi, regime_fiscale)
+    imponibile_fiscale = regime["imponibile_fiscale"]
 
     # 4-6. IRPEF nazionale e misure strutturali sul cuneo
     irpef_lorda = irpef.irpef_lorda(imponibile_fiscale)
     detrazione = detrazioni.detrazione_lavoro_dipendente(imponibile_fiscale)
-    detrazione_cuneo = cuneo.detrazione_aggiuntiva(imponibile_fiscale)
+    # Per carichi familiari e misure sul cuneo la quota esclusa dai regimi speciali deve essere
+    # riaggiunta al reddito di riferimento; l'IRPEF resta invece calcolata sulla base agevolata.
+    reddito_riferimento_agevolazioni = reddito_post_contributi
+    situazione_familiare = familiari.calcola_familiari(
+        reddito_riferimento_agevolazioni, coniuge, figli
+    )
+    detrazione_coniuge = situazione_familiare["detrazione_coniuge"]
+    detrazione_figli = situazione_familiare["detrazione_figli"]
+    detrazione_cuneo = cuneo.detrazione_aggiuntiva(reddito_riferimento_agevolazioni)
     # Le quote effettivamente usate vengono conservate separatamente per spiegare il passaggio
     # dall'IRPEF lorda alla netta senza mostrare detrazioni incapienti come denaro ricevuto.
     detrazione_applicata = min(irpef_lorda, detrazione)
     residuo_irpef = irpef_lorda - detrazione_applicata
+    detrazione_coniuge_applicata = min(residuo_irpef, detrazione_coniuge)
+    residuo_irpef -= detrazione_coniuge_applicata
+    detrazione_figli_applicata = min(residuo_irpef, detrazione_figli)
+    residuo_irpef -= detrazione_figli_applicata
     detrazione_cuneo_applicata = min(residuo_irpef, detrazione_cuneo)
     irpef_netta = residuo_irpef - detrazione_cuneo_applicata
 
@@ -73,13 +97,17 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
 
     # 9. somma erogata in busta paga, non un'imposta
     integrativo = trattamento_integrativo.trattamento_integrativo(
-        imponibile_fiscale, irpef_lorda, detrazione
+        imponibile_fiscale,
+        irpef_lorda,
+        detrazione,
+        detrazione_coniuge + detrazione_figli,
+        reddito_riferimento_agevolazioni,
     )
-    somma_cuneo = cuneo.somma_esente(imponibile_fiscale)
+    somma_cuneo = cuneo.somma_esente(reddito_riferimento_agevolazioni)
 
     # 10-11. netto
     netto_annuo = (
-        imponibile_fiscale - irpef_netta - add_regionale - add_comunale + integrativo + somma_cuneo
+        reddito_post_contributi - irpef_netta - add_regionale - add_comunale + integrativo + somma_cuneo
     )
     netto_mensile = netto_annuo / mensilita
 
@@ -108,10 +136,16 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
         "dettaglio": {
             "imponibile_previdenziale": round(imponibile_previdenziale, 2),
             "contributi_inps": round(contributi, 2),
+            "reddito_post_contributi": round(reddito_post_contributi, 2),
+            "quota_reddito_esente": round(regime["quota_esente"], 2),
             "imponibile_fiscale": round(imponibile_fiscale, 2),
             "irpef_lorda": round(irpef_lorda, 2),
             "detrazione_lavoro_dipendente": round(detrazione, 2),
             "detrazione_lavoro_applicata": round(detrazione_applicata, 2),
+            "detrazione_coniuge": round(detrazione_coniuge, 2),
+            "detrazione_coniuge_applicata": round(detrazione_coniuge_applicata, 2),
+            "detrazione_figli": round(detrazione_figli, 2),
+            "detrazione_figli_applicata": round(detrazione_figli_applicata, 2),
             "detrazione_cuneo": round(detrazione_cuneo, 2),
             "detrazione_cuneo_applicata": round(detrazione_cuneo_applicata, 2),
             "irpef_netta": round(irpef_netta, 2),
@@ -132,12 +166,20 @@ def calcola(ral: float, codice_comune: str, mensilita: int = MENSILITA_DEFAULT) 
             "comunale_esenzione": comune.get("esenzione", 0),
             "comunale_modalita": comune["modalita"],
         },
+        "familiari": situazione_familiare,
+        "regime_fiscale": {
+            **regime,
+            "quota_esente": round(regime["quota_esente"], 2),
+            "imponibile_fiscale": round(regime["imponibile_fiscale"], 2),
+        },
         # Voci gia' pronte per il waterfall: il frontend le disegna senza ricalcolare nulla.
         "waterfall": [
             {"etichetta": "RAL", "importo": round(ral, 2), "tipo": "inizio"},
             {"etichetta": "Contributi INPS", "importo": round(-contributi, 2), "tipo": "sottrazione"},
             {"etichetta": "IRPEF lorda", "importo": round(-irpef_lorda, 2), "tipo": "sottrazione"},
             {"etichetta": "Detrazione lavoro", "importo": round(detrazione_applicata, 2), "tipo": "aggiunta"},
+            {"etichetta": "Detrazione coniuge", "importo": round(detrazione_coniuge_applicata, 2), "tipo": "aggiunta"},
+            {"etichetta": "Detrazione figli", "importo": round(detrazione_figli_applicata, 2), "tipo": "aggiunta"},
             {"etichetta": "Detrazione cuneo", "importo": round(detrazione_cuneo_applicata, 2), "tipo": "aggiunta"},
             {"etichetta": "Addizionale regionale", "importo": round(-add_regionale, 2), "tipo": "sottrazione"},
             {"etichetta": "Addizionale comunale", "importo": round(-add_comunale, 2), "tipo": "sottrazione"},

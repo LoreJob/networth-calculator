@@ -10,7 +10,9 @@ SOGLIA_AZZERAMENTO = 28_000.0
 def trattamento_integrativo(
     imponibile_fiscale: float,
     irpef_lorda: float | None = None,
-    detrazioni_rilevanti: float | None = None,
+    detrazione_lavoro: float | None = None,
+    altre_detrazioni_rilevanti: float = 0.0,
+    reddito_riferimento: float | None = None,
 ) -> float:
     """Trattamento integrativo annuo spettante.
 
@@ -23,14 +25,17 @@ def trattamento_integrativo(
     Il chiamante passa imposta e detrazioni effettive. I valori opzionali mantengono la funzione
     utilizzabile isolatamente, ma la pipeline usa sempre il controllo di capienza.
     """
-    reddito = imponibile_fiscale
+    # La quota esente del regime impatriati rileva per intero nella verifica delle soglie del
+    # trattamento integrativo.
+    reddito = imponibile_fiscale if reddito_riferimento is None else reddito_riferimento
 
     if reddito <= 0:
         return 0.0
-    if irpef_lorda is None or detrazioni_rilevanti is None:
+    if irpef_lorda is None or detrazione_lavoro is None:
         return 0.0
     if reddito <= SOGLIA_IMPORTO_PIENO:
-        return IMPORTO_PIENO if irpef_lorda > max(0.0, detrazioni_rilevanti - 75.0) else 0.0
+        return IMPORTO_PIENO if irpef_lorda > max(0.0, detrazione_lavoro - 75.0) else 0.0
     if reddito <= SOGLIA_AZZERAMENTO:
+        detrazioni_rilevanti = detrazione_lavoro + altre_detrazioni_rilevanti
         return min(IMPORTO_PIENO, max(0.0, detrazioni_rilevanti - irpef_lorda))
     return 0.0
